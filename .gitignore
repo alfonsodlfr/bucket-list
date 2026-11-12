@@ -1,0 +1,3 @@
+.DS_Store
+# local-only demo helper (adds sample entries to whoever opens it)
+add-sample-ideas.html
