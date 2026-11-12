@@ -4,7 +4,7 @@
    - Photos in img/ and Google Fonts: cache first; they never change.
    - Everything else (Wikipedia/Wikivoyage lookups): network only.
    Bump VERSION when the list of shell files changes. */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const MEDIA = 'media-v1';
 const SHELL_FILES = [

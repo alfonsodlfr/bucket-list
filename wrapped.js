@@ -134,6 +134,9 @@ const personaFor = (done, byType, nCountries) => done.length ? PERSONAS.find(p =
 const ease = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
 const seg = (t, a, b) => ease((t - a) / (b - a));
 function wash(ctx, c1, c2, c3) {
+  // On screen the content is scaled into the area between the controls; the colour wash still fills every pixel
+  ctx.save();
+  if (ctx.wrBase) ctx.setTransform(ctx.wrBase);
   ctx.fillStyle = '#0c0b0a'; ctx.fillRect(0, 0, WR_W, WR_H);
   const blob = (x, y, r, col, a) => {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
@@ -141,6 +144,7 @@ function wash(ctx, c1, c2, c3) {
     ctx.fillStyle = g; ctx.fillRect(0, 0, WR_W, WR_H);
   };
   blob(180, 320, 900, c1, .9); blob(980, 1500, 1000, c2, .55); blob(540, 980, 700, c3, .12);
+  ctx.restore();
 }
 function T(ctx, s, x, y, { size = 40, weight = 400, color = '#ede4d6', align = 'left', spacing = 0, alpha = 1, upper = false } = {}) {
   ctx.save();
@@ -149,6 +153,18 @@ function T(ctx, s, x, y, { size = 40, weight = 400, color = '#ede4d6', align = '
   ctx.letterSpacing = spacing + 'px';
   ctx.fillText(upper ? s.toUpperCase() : s, x, y);
   ctx.restore();
+}
+// Like T, but shortened with an ellipsis so it never runs past maxW
+function Tfit(ctx, s, x, y, maxW, o = {}) {
+  ctx.save();
+  ctx.font = `${o.weight ?? 400} ${o.size ?? 40}px Inter`; ctx.letterSpacing = (o.spacing ?? 0) + 'px';
+  let str = o.upper ? s.toUpperCase() : s;
+  if (ctx.measureText(str).width > maxW) {
+    while (str.length > 1 && ctx.measureText(str + '…').width > maxW) str = str.slice(0, -1);
+    str = str.trimEnd() + '…';
+  }
+  ctx.restore();
+  T(ctx, str, x, y, { ...o, upper: false });
 }
 function header(ctx, D, t) {
   T(ctx, `THE LIST · ${D.year} WRAPPED`, 90, 280, { size: 24, weight: 500, color: '#c8a96a', spacing: 7, alpha: seg(t, 0, .3) });
@@ -209,7 +225,7 @@ const SLIDES = [
     T(ctx, 'Longest streak', 90, 520, { size: 52, weight: 300, alpha: seg(t, 0, .3) });
     T(ctx, String(Math.round(D.streak * ease(t / .6))), 70, 860, { size: 380, weight: 200, spacing: -16, color: '#fff' });
     T(ctx, D.streak === 1 ? 'week in a row' : 'weeks in a row', 90, 960, { size: 56, color: '#c8a96a', alpha: seg(t, .3, .6) });
-    T(ctx, `with at least one goal done · ${D.activeWeeks} active weeks`, 90, 1030, { size: 32, weight: 300, color: '#9a9184', alpha: seg(t, .4, .7) });
+    Tfit(ctx, `with at least one goal done · ${D.activeWeeks} active weeks`, 90, 1030, WR_W - 180, { size: 32, weight: 300, color: '#9a9184', alpha: seg(t, .4, .7) });
     // 53 week dots
     const cols = 9, s = 92, x0 = 120, y0 = 1180;
     for (let w = 0; w < 53; w++) {
@@ -236,7 +252,7 @@ const SLIDES = [
       T(ctx, f, 120 + (n % 5) * 190, 1180 + Math.floor(n / 5) * 190 + (1 - k) * 40, { size: 120, alpha: k });
     });
     const names = D.countries.slice(0, 6).map(id => WORLD.byId[id]?.name).filter(Boolean).join(' · ');
-    T(ctx, names, 90, 1660, { size: 28, weight: 300, color: '#9a9184', alpha: seg(t, .7, 1) });
+    Tfit(ctx, names, 90, 1660, WR_W - 180, { size: 28, weight: 300, color: '#9a9184', alpha: seg(t, .7, 1) });
   } },
   { id: 'map', draw(ctx, t, D) {
     wash(ctx, '#16120c', '#11202a', '#c8a96a');
@@ -267,7 +283,7 @@ const SLIDES = [
     spots.forEach((e, n) => {
       const y = 1460 + n * 62, k = seg(t, .55 + n * .07, .85 + n * .07);
       ctx.globalAlpha = k; ctx.fillStyle = '#f0c27a'; ctx.beginPath(); ctx.arc(102, y - 12, 6, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
-      T(ctx, e.place, 128, y, { size: 32, weight: 400, alpha: k });
+      Tfit(ctx, e.place, 128, y, WR_W - 128 - 200, { size: 32, weight: 400, alpha: k });
       T(ctx, new Date(e.doneAt).toLocaleDateString('en', { month: 'short' }).toUpperCase(), WR_W - 90, y, { size: 24, weight: 500, color: '#9a9184', align: 'right', spacing: 4, alpha: k });
     });
   } },
@@ -277,14 +293,14 @@ const SLIDES = [
     T(ctx, 'Challenge mode', 90, 520, { size: 52, weight: 300, alpha: seg(t, 0, .3) });
     T(ctx, String(Math.round(D.won * ease(t / .5))), 70, 840, { size: 340, weight: 200, spacing: -14, color: '#fff' });
     T(ctx, D.won === 1 ? 'challenge won' : 'challenges won', 90, 935, { size: 56, color: '#c8a96a', alpha: seg(t, .25, .55) });
-    T(ctx, `${nfmt(Math.round(D.points * ease((t - .2) / .6)))} points from photo-proven goals`, 90, 1010, { size: 34, weight: 300, color: '#9a9184', alpha: seg(t, .3, .6) });
+    Tfit(ctx, `${nfmt(Math.round(D.points * ease((t - .2) / .6)))} points from photo-proven goals`, 90, 1010, WR_W - 180, { size: 34, weight: 300, color: '#9a9184', alpha: seg(t, .3, .6) });
     D.ranks.slice(0, 4).forEach((r, n) => {
       const y = 1180 + n * 130, k = seg(t, .4 + n * .1, .75 + n * .1);
       ctx.globalAlpha = k;
       ctx.fillStyle = 'rgba(237,228,214,.06)'; ctx.beginPath(); ctx.roundRect(90, y - 70, WR_W - 180, 104, 20); ctx.fill();
       ctx.globalAlpha = 1;
       T(ctx, r.rank === 1 ? (r.ended ? '🏆' : '🥇') : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`, 130, y, { size: 46, alpha: k });
-      T(ctx, r.title, 220, y, { size: 38, weight: 400, alpha: k });
+      Tfit(ctx, r.title, 220, y, WR_W - 220 - 260, { size: 38, weight: 400, alpha: k });
       T(ctx, r.ended ? 'final' : 'live', WR_W - 130, y, { size: 26, weight: 500, color: '#c8a96a', align: 'right', spacing: 4, upper: true, alpha: k });
     });
   } },
@@ -306,7 +322,7 @@ const SLIDES = [
       T(ctx, `${e} ${n}`, x + 85, 1556 + lns.length * 74 - 74, { size: 42, align: 'center', alpha: kk });
       x += 186;
     });
-    if (D.mostEngaged) T(ctx, `Biggest buzz: “${D.mostEngaged.title}” · ${Object.keys(D.mostEngaged.reactions).length} kinds of reaction`, 90, 1700, { size: 28, weight: 300, color: '#9a9184', alpha: seg(t, .7, 1) });
+    if (D.mostEngaged) Tfit(ctx, `Biggest buzz: “${D.mostEngaged.title}” · ${Object.keys(D.mostEngaged.reactions).length} kinds of reaction`, 90, 1700, WR_W - 180, { size: 28, weight: 300, color: '#9a9184', alpha: seg(t, .7, 1) });
   } },
   { id: 'quest', skip: D => !D.quest, draw(ctx, t, D, A) {
     wash(ctx, '#10231c', '#2e1508', '#3f7d5c');
@@ -337,7 +353,7 @@ const SLIDES = [
     T(ctx, p.icon, 0, 90, { size: 260, align: 'center' }); ctx.restore();
     const lns = lines(ctx, p.name, WR_W - 160, 120, 300);
     lns.forEach((l, i) => T(ctx, l, WR_W / 2, 1220 + i * 132, { size: 120, weight: 300, color: '#fff', align: 'center', spacing: -4, alpha: seg(t, .35 + i * .1, .7 + i * .1) }));
-    T(ctx, p.line, WR_W / 2, 1260 + lns.length * 132, { size: 38, weight: 300, align: 'center', alpha: seg(t, .6, .9) });
+    lines(ctx, p.line, WR_W - 200, 38, 300).slice(0, 2).forEach((l, i) => T(ctx, l, WR_W / 2, 1260 + lns.length * 132 + i * 52, { size: 38, weight: 300, align: 'center', alpha: seg(t, .6, .9) }));
   } },
   { id: 'summary', draw(ctx, t, D, A) {
     wash(ctx, '#2a2216', '#16120c', '#c8a96a');
@@ -353,10 +369,10 @@ const SLIDES = [
     cells.forEach(([v, l], i) => {
       const x = 90 + (i % 2) * 460, y = 720 + Math.floor(i / 2) * 270, k = seg(t, .2 + i * .07, .55 + i * .07);
       ctx.globalAlpha = k; ctx.fillStyle = 'rgba(237,228,214,.15)'; ctx.fillRect(x, y - 150, 400, 1); ctx.globalAlpha = 1;
-      T(ctx, typeof v === 'number' ? nfmt(v) : v, x, y, { size: typeof v === 'number' ? 120 : 76, weight: 200, color: '#fff', spacing: -4, alpha: k });
+      Tfit(ctx, typeof v === 'number' ? nfmt(v) : v, x, y, 420, { size: typeof v === 'number' ? 120 : 76, weight: 200, color: '#fff', spacing: -4, alpha: k });
       T(ctx, l, x, y + 54, { size: 30, weight: 400, color: '#c8a96a', alpha: k });
     });
-    T(ctx, D.persona.icon + '  ' + D.persona.name, 90, 1560, { size: 48, weight: 400, color: '#fff', alpha: seg(t, .6, .9) });
+    Tfit(ctx, D.persona.icon + '  ' + D.persona.name, 90, 1560, WR_W - 180, { size: 48, weight: 400, color: '#fff', alpha: seg(t, .6, .9) });
     T(ctx, 'One more year off the list.', 90, 1640, { size: 32, weight: 300, color: '#9a9184', alpha: seg(t, .7, 1) });
   } },
 ];
@@ -395,12 +411,35 @@ function go(i) {
   WR.i = Math.max(0, Math.min(WR.slides.length - 1, i));
   WR.t0 = performance.now(); WR.pausedAt = 0;
 }
+/* Live layout. Slides are designed on 1080×1920 with their content between y≈140 and y≈1740.
+   On screen the canvas matches the stage exactly (no cropping), the wash fills all of it, and that
+   content band is scaled to fit between the top controls and the bottom buttons. Exports are unchanged. */
+const WR_BAND = [140, 1740];
+let wrView = null;
+function layoutWrapped() {
+  const cv = $('#wrCanvas'), st = $('#wrStage').getBoundingClientRect();
+  if (!st.width) return;
+  const dpr = Math.min(devicePixelRatio || 1, 3);
+  cv.width = Math.round(st.width * dpr); cv.height = Math.round(st.height * dpr);
+  const top = $('.wr-top').getBoundingClientRect().bottom - st.top + 14;
+  const bottom = st.bottom - $('.wr-actions').getBoundingClientRect().top + 14;
+  const availH = st.height - top - bottom, bandH = WR_BAND[1] - WR_BAND[0];
+  const k = Math.min(st.width / WR_W, availH / bandH);
+  const x0 = (st.width - WR_W * k) / 2, y0 = top + (availH - bandH * k) / 2 - WR_BAND[0] * k;
+  wrView = {
+    content: new DOMMatrix([dpr * k, 0, 0, dpr * k, dpr * x0, dpr * y0]),
+    base: new DOMMatrix([cv.width / WR_W, 0, 0, cv.height / WR_H, 0, 0]),
+  };
+}
+addEventListener('resize', () => { if (!$('#wrapped').hidden) layoutWrapped(); });
 function loop() {
   const ctx = $('#wrCanvas').getContext('2d');
+  layoutWrapped();
   const tick = now => {
     if (!WR || !$('#wrBars') || $('#wrapped').hidden) return; // stop when closed
     const el = WR.paused ? WR.pausedAt : now - WR.t0;
     const s = WR.slides[WR.i];
+    if (wrView) { ctx.setTransform(wrView.content); ctx.wrBase = wrView.base; }
     s.draw(ctx, el / INTRO_MS, WR.D, WR.A);
     [...$('#wrBars').children].forEach((bar, n) => { bar.firstChild.style.width = (n < WR.i ? 100 : n > WR.i ? 0 : Math.min(100, el / SLIDE_MS * 100)) + '%'; });
     if (!WR.paused && el >= SLIDE_MS && WR.i < WR.slides.length - 1) go(WR.i + 1);

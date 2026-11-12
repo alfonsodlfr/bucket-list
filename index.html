@@ -635,22 +635,22 @@ body.wr-open{overflow:hidden}
 .wrapped{position:fixed;inset:0;z-index:80;background:#050404;display:grid;place-items:center;animation:fade .4s}
 .wr-stage{position:relative;height:min(100dvh,calc(100vw * 16 / 9));aspect-ratio:9/16;max-width:100vw;overflow:hidden;border-radius:12px;box-shadow:0 30px 120px rgba(0,0,0,.6)}
 #wrCanvas{width:100%;height:100%;display:block}
-.wr-bars{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;display:flex;gap:4px;z-index:3}
+.wr-bars{position:absolute;top:calc(12px + env(safe-area-inset-top));left:16px;right:16px;display:flex;gap:4px;z-index:3}
 .wr-bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden}
 .wr-bars b{display:block;height:100%;width:0;background:#fff}
-.wr-top{position:absolute;top:calc(26px + env(safe-area-inset-top));left:12px;right:12px;display:flex;align-items:center;z-index:4}
+.wr-top{position:absolute;top:calc(26px + env(safe-area-inset-top));left:16px;right:16px;display:flex;align-items:center;z-index:4}
 .wr-top .spacer{flex:1}
 .wr-chip{font-size:11px;letter-spacing:.08em;padding:7px 12px;border-radius:999px;background:rgba(12,11,10,.55);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px)}
 .wr-x{width:38px;height:38px;border-radius:50%;font-size:24px;line-height:1;background:rgba(12,11,10,.45);backdrop-filter:blur(8px)}
-.wr-tap{position:absolute;top:80px;bottom:110px;z-index:2;width:35%}
+.wr-tap{position:absolute;top:calc(80px + env(safe-area-inset-top));bottom:calc(110px + env(safe-area-inset-bottom));z-index:2;width:35%}
 .wr-tap.left{left:0}.wr-tap.right{right:0;width:65%}
 .wr-actions{position:absolute;left:16px;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:4}
-.wr-actions .btn{flex:1;backdrop-filter:blur(8px);background-color:rgba(12,11,10,.4)}
+.wr-actions .btn{flex:1;min-width:0;white-space:nowrap;padding-left:10px;padding-right:10px;backdrop-filter:blur(8px);background-color:rgba(12,11,10,.4)}
 .wr-actions .btn.solid{background:var(--text)}
 .wr-round{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--line-strong);background:rgba(12,11,10,.45);font-size:13px}
 .wr-loading{position:absolute;inset:0;display:grid;place-items:center;background:#0c0b0a;color:var(--muted);font-size:15px;z-index:5;animation:breathe 1.6s ease-in-out infinite}
 .wrapped[hidden],.wr-export[hidden],.wr-loading[hidden]{display:none}
-.wr-export{position:absolute;left:12px;right:12px;bottom:12px;z-index:6;background:rgba(21,19,17,.96);border:1px solid var(--line);border-radius:12px;padding:22px;display:grid;gap:10px;animation:in .4s var(--ease)}
+.wr-export{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:6;background:rgba(21,19,17,.96);border:1px solid var(--line);border-radius:12px;padding:22px;display:grid;gap:10px;animation:in .4s var(--ease)}
 .wr-export h3{font-size:22px;font-weight:300;margin-bottom:6px}
 .wr-opt{text-align:left;padding:14px 16px;border:1px solid var(--line-strong);border-radius:8px;display:grid;gap:3px}
 .wr-opt:hover{border-color:var(--gold)}
@@ -674,7 +674,6 @@ body.wr-open{overflow:hidden}
   .goal-t{flex-basis:calc(100% - 110px)}
   .proofs{margin-left:auto}
   .wr-stage{height:100dvh;width:100vw;aspect-ratio:auto;border-radius:0}
-  #wrCanvas{object-fit:cover}
   .wrapped-pill{margin-top:16px}
 }
 
