@@ -392,7 +392,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 /* Share */
 #share{width:min(860px,94vw)}
 .share-wrap{display:grid;grid-template-columns:auto 1fr;gap:40px;padding:40px;align-items:center}
-.share-preview{width:270px;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:var(--bg);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px var(--line);display:grid;place-items:center;color:var(--muted);font-size:12px}
+.share-preview{position:relative;width:270px;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:var(--bg);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px var(--line);display:grid;place-items:center;color:var(--muted);font-size:12px}
 .share-preview img,.share-preview canvas{width:100%;height:100%;display:block;animation:in .8s var(--ease)}
 .share-preview.can-frame{cursor:grab;touch-action:none;user-select:none}
 .share-preview.can-frame.dragging{cursor:grabbing}
@@ -880,9 +880,27 @@ body.wr-open{overflow:hidden}
   .row .link{width:100%;text-align:left;padding:2px 0}
   .visit-form .form-actions{margin:0;padding:12px 0;position:static;border-top:0;background:none}
   .share-wrap{grid-template-columns:1fr;justify-items:stretch;gap:22px;padding:30px 20px 24px}
-  .share-preview{width:min(200px,48vw);justify-self:center}
-  .share-side h2{font-size:24px}
-  .share-side .btns .btn{flex:1}
+  /* Share sheet on phones: everything fits at once, so the preview stays in view while picking */
+  .share-wrap{gap:16px;padding:30px 20px 20px;grid-template-columns:minmax(0,1fr)}
+  .share-side{min-width:0}
+  .share-preview{width:auto;height:min(40dvh,380px);aspect-ratio:9/16;justify-self:center;border-radius:12px}
+  .share-side>.eyebrow,.share-side>p:not(.hint-line){display:none}
+  .share-side h2{font-size:20px;margin:0 0 12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .share-side .opts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -20px 16px;padding:0 20px}
+  .share-side .opts::-webkit-scrollbar{display:none}
+  #shareHint{margin:-8px 0 14px!important;text-align:center}
+  .photo-pick{margin:0 0 12px}
+  .photo-pick .eyebrow,.frame-head .eyebrow{display:none}
+  .pick-row{margin:0 -20px;padding:3px 20px 4px}
+  .pick{width:46px;height:56px}
+  .frame-ctl{margin:0 0 16px;padding:0;border:0;display:flex;align-items:center;gap:14px}
+  .frame-head{order:2;margin:0}
+  .frame-row{flex:1}
+  .frame-ctl .hint-line{display:none}
+  .share-side .btns{flex-wrap:nowrap}
+  .share-side .btns .btn{flex:1;padding-left:12px;padding-right:12px}
+  .share-preview.can-frame::after{content:"Drag to move · pinch to zoom";position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.75);text-shadow:0 1px 6px rgba(0,0,0,.8);pointer-events:none;opacity:1;transition:opacity .4s}
+  .share-preview.can-frame.dragging::after{opacity:0}
   .toast{bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));max-width:calc(100vw - 40px);text-align:center}
 }
 </style>
@@ -2383,12 +2401,22 @@ function persistFrame() {
 (() => {
   const prev = $('#sharePreview');
   let last = null;
+  const touches = new Map(); let pinch = null; // two fingers on the preview zoom the photo
+  const spread = () => { const [a, b] = [...touches.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
   prev.addEventListener('pointerdown', e => {
     if (!prev.classList.contains('can-frame')) return;
-    last = { x: e.clientX, y: e.clientY };
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) { pinch = { d: spread(), z: shareFrame.z }; last = null; }
+    else last = { x: e.clientX, y: e.clientY };
     prev.setPointerCapture(e.pointerId); prev.classList.add('dragging');
   });
   prev.addEventListener('pointermove', e => {
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && touches.size === 2) {
+      shareFrame.z = Math.min(3, Math.max(1, pinch.z * spread() / pinch.d));
+      $('#frameZoom').value = shareFrame.z;
+      return rerenderSoon();
+    }
     if (!last || !shareFrameInfo) return;
     const k = W / prev.clientWidth; // screen px -> story px
     const dx = (e.clientX - last.x) * k, dy = (e.clientY - last.y) * k;
@@ -2399,7 +2427,13 @@ function persistFrame() {
     if (shareFrameInfo.oy > 1) shareFrame.y = clamp(shareFrame.y - dy / shareFrameInfo.oy);
     rerenderSoon();
   });
-  const end = () => { if (!last) return; last = null; prev.classList.remove('dragging'); persistFrame(); };
+  const end = e => {
+    touches.delete(e.pointerId);
+    if (touches.size) return; // still one finger down after a pinch: wait for it
+    const was = last || pinch; last = null; pinch = null;
+    prev.classList.remove('dragging');
+    if (was) persistFrame();
+  };
   prev.addEventListener('pointerup', end);
   prev.addEventListener('pointercancel', end);
   prev.addEventListener('wheel', e => {
