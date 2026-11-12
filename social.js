@@ -1,100 +1,281 @@
 /* ===================================================================
    Social: friends, live challenges with photo proof, activity feed.
 
-   Everything goes through `api`, a mock that mirrors the planned
-   database tables (profiles, challenges, challenge_members,
-   challenge_items, challenge_completions, completion_votes,
-   activities, reactions). Calls are async and changes are pushed
-   through `api.on(...)`, the same shape a realtime backend gives,
-   so the UI won't change when the mock is swapped for a database.
+   Shared through Supabase (see supabase/schema.sql). Your bucket list
+   stays on your phone; challenges, goals, photo proofs, votes, the feed
+   and reactions are shared with the people in your challenges.
+
+   `S` is a local cache with the same shape the UI (and Wrapped) read
+   synchronously. `sync()` refills it from the database, and realtime
+   changes trigger a sync, then the usual events through `api.on(...)`.
    =================================================================== */
 
-const SKEY = 'bucketlist.social.v1';
-const ME = 'me';
+const SUPABASE_URL = 'https://iocnvwefmlqbgotekhhp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qqVElf-BIE6ShN2qrz0meQ_DKsTFlIW'; // publishable: safe in the app, access is enforced by row level security
 const POINTS = { easy: 10, medium: 25, hard: 50 };
 const DIFF_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 const EMOJIS = ['✨', '🔥', '🌍', '🏔️', '👏', '🥹'];
+const COLORS = ['#7a9e9f', '#b5736a', '#8f84b8', '#6f9a6a', '#c8a96a', '#a0784f', '#6a87b5', '#b56a94'];
 const DAY = 864e5;
 const uid = () => crypto.randomUUID();
+localStorage.removeItem('bucketlist.social.v1'); // the old demo friends
 
-/* ---------- Seed data (mock friends, challenges, feed) ---------- */
-function seedSocial() {
-  const now = Date.now(), y = new Date().getFullYear();
-  const d = (m, day) => new Date(y, m - 1, day, 12).getTime();
-  const profiles = [
-    { id: ME, name: 'You', color: '#c8a96a' },
-    { id: 'lena', name: 'Lena Hoffmann', color: '#7a9e9f' },
-    { id: 'marco', name: 'Marco Rossi', color: '#b5736a' },
-    { id: 'aiko', name: 'Aiko Tanaka', color: '#8f84b8' },
-    { id: 'sam', name: 'Sam Okafor', color: '#6f9a6a' },
-  ];
-  const ch = (id, title, startsAt, endsAt, createdBy, members, list) => ({
-    challenge: { id, title, startsAt, endsAt, createdBy },
-    members: members.map(userId => ({ challengeId: id, userId })),
-    items: list.map(([title, difficulty, i]) => ({ id: `${id}-i${i}`, challengeId: id, title, difficulty })),
-  });
-  const summer = ch('summer', 'Summer of Yes', d(6, 1), d(8, 31), ME, [ME, 'lena', 'marco', 'aiko'], [
-    ['Swim in a glacier lake', 'hard', 1], ['Watch a sunrise from a summit', 'medium', 2], ['Cook a dish from a new country', 'easy', 3],
-    ['Sleep under the stars', 'medium', 4], ['Try a sport you have never done', 'medium', 5], ['Visit a new country', 'hard', 6],
-  ]);
-  const autumn = ch('autumn', 'Autumn Sprint', d(10, 1), d(11, 30), 'lena', [ME, 'lena', 'aiko', 'sam'], [
-    ['Hike above 2,000 m', 'hard', 1], ['See a live orchestra', 'easy', 2], ['Eat at a market you have never visited', 'easy', 3],
-    ['Learn 50 words in a new language', 'medium', 4], ['Take a night train', 'medium', 5], ['Finish a 10k run', 'medium', 6],
-    ['Swim in the sea after October 15', 'hard', 7], ['Visit a museum you keep postponing', 'easy', 8],
-  ]);
-  const duel = ch('duel', 'Marco vs. You: 2026', d(1, 1), d(12, 31), 'marco', [ME, 'marco'], [
-    ['Run a half marathon', 'hard', 1], ['Visit 3 new countries', 'hard', 2], ['Read 12 books', 'medium', 3],
-    ['Take a pottery class', 'easy', 4], ['See the northern lights', 'hard', 5], ['Learn to make fresh pasta', 'easy', 6],
-  ]);
-  const P = n => `img/${n}.jpg`;
-  const comp = (challengeId, i, userId, photo, at) => ({ id: uid(), itemId: `${challengeId}-i${i}`, challengeId, userId, proof: P(photo), completedAt: at, status: 'counted' });
-  const completions = [
-    comp('summer', 1, ME, 'trek-torres-del-paine', d(7, 12)), comp('summer', 2, ME, 'via-ferrata-in-the-dolomites', d(6, 21)),
-    comp('summer', 6, ME, 'sunrise-at-petra', d(8, 3)), comp('summer', 3, 'lena', 'hand-rolled-pasta-in-bologna', d(6, 14)),
-    comp('summer', 4, 'lena', 'chase-the-northern-lights', d(7, 30)), comp('summer', 5, 'marco', 'learn-to-sail-alone', d(7, 2)),
-    comp('summer', 2, 'aiko', 'balloon-over-cappadocia', d(8, 10)), comp('summer', 3, 'aiko', 'omakase-in-ginza', d(6, 28)),
-    comp('autumn', 2, ME, 'an-evening-at-la-scala', d(10, 9)), comp('autumn', 3, ME, 'the-markets-of-oaxaca', d(10, 18)),
-    comp('autumn', 1, 'lena', 'via-ferrata-in-the-dolomites', d(10, 5)), comp('autumn', 5, 'lena', 'route-66-end-to-end', d(10, 22)),
-    comp('autumn', 8, 'aiko', 'the-venice-biennale', d(10, 12)), comp('autumn', 6, 'sam', 'run-a-half-marathon', d(10, 26)),
-    comp('autumn', 3, 'sam', 'omakase-in-ginza', d(11, 1)),
-    comp('duel', 4, ME, 'a-season-at-the-potter-s-wheel', d(3, 8)), comp('duel', 6, ME, 'hand-rolled-pasta-in-bologna', d(5, 2)),
-    comp('duel', 1, 'marco', 'run-a-half-marathon', d(4, 14)), comp('duel', 3, 'marco', 'write-a-short-book', d(9, 1)),
-  ];
-  const act = (actorId, title, photo, place, type, at, extra = {}) => ({ id: uid(), actorId, kind: 'entry_completed', title, photo: P(photo), place, type, createdAt: at, ...extra });
-  const activities = [
-    act('sam', 'Finish a 10k run', 'run-a-half-marathon', 'Lagos, Nigeria', 'personal', now - 3 * 3600e3, { challengeId: 'autumn', points: 25 }),
-    act('aiko', 'Visit the Venice Biennale', 'the-venice-biennale', 'Venice, Italy', 'culture', now - 26 * 3600e3, { challengeId: 'autumn', points: 10, caption: 'Three pavilions in, completely overwhelmed (in a good way).' }),
-    act('lena', 'Take a night train across the Alps', 'route-66-end-to-end', 'Munich → Rome', 'trip', now - 2.4 * DAY, { challengeId: 'autumn', points: 25 }),
-    act('marco', 'Sail the Amalfi Coast', 'sail-the-amalfi-coast', 'Amalfi, Italy', 'trip', now - 4 * DAY, { caption: 'Ten years on the list. Worth every one of them.' }),
-    act('lena', 'Hike above 2,000 m', 'via-ferrata-in-the-dolomites', 'Cortina d\'Ampezzo, Italy', 'activity', now - 6 * DAY, { challengeId: 'autumn', points: 50 }),
-    act('aiko', 'Chase the northern lights', 'chase-the-northern-lights', 'Kiruna, Sweden', 'trip', now - 9 * DAY, { caption: 'Minus 28 and I forgot I had hands.' }),
-  ];
-  const reactions = [];
-  const r = (a, userId, emoji) => reactions.push({ activityId: activities[a].id, userId, emoji, createdAt: now - DAY });
-  r(0, 'lena', '🔥'); r(0, 'aiko', '👏'); r(1, 'lena', '✨'); r(1, 'sam', '🥹'); r(1, 'marco', '✨');
-  r(2, 'aiko', '🌍'); r(2, 'sam', '🔥'); r(3, 'lena', '🥹'); r(3, 'aiko', '✨'); r(3, 'sam', '🌍');
-  r(4, 'sam', '🏔️'); r(4, 'aiko', '🏔️'); r(4, 'marco', '🔥'); r(5, 'lena', '✨'); r(5, 'marco', '🥹'); r(5, 'sam', '✨');
-  return {
-    profiles,
-    challenges: [summer, autumn, duel].map(c => c.challenge),
-    members: [summer, autumn, duel].flatMap(c => c.members),
-    items: [summer, autumn, duel].flatMap(c => c.items),
-    completions, votes: [], activities, reactions,
-  };
-}
+const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'bucketlist.auth', detectSessionInUrl: false },
+});
+let ME = null;        // your user id once signed in
+let socialReady = false;
+const emptyS = () => ({ profiles: [], challenges: [], members: [], items: [], completions: [], votes: [], activities: [], reactions: [] });
+let S = emptyS();
 
-let S = (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || seedSocial(); } catch { return seedSocial(); } })();
-const persist = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch { toast('Storage is full: some social changes were not saved'); } };
-persist();
-
-/* ---------- Mock API (async, event-driven) ---------- */
+/* ---------- Events ---------- */
 const bus = new EventTarget();
 const emit = (type, detail) => bus.dispatchEvent(new CustomEvent(type, { detail }));
-const latency = () => new Promise(r => setTimeout(r, 120 + Math.random() * 180));
 
+/* ---------- Database <-> cache ---------- */
+const ms = v => (v ? Date.parse(v) : null);
+const iso = t => new Date(t).toISOString();
+const MAP = {
+  profiles: r => ({ id: r.id, name: r.name, color: r.color }),
+  challenges: r => ({ id: r.id, title: r.title, startsAt: ms(r.starts_at), endsAt: ms(r.ends_at), createdBy: r.created_by, inviteCode: r.invite_code }),
+  members: r => ({ challengeId: r.challenge_id, userId: r.user_id }),
+  items: r => ({ id: r.id, challengeId: r.challenge_id, title: r.title, difficulty: r.difficulty }),
+  completions: r => ({ id: r.id, itemId: r.item_id, challengeId: r.challenge_id, userId: r.user_id, proof: r.proof_url, hash: r.hash, takenAt: ms(r.taken_at), completedAt: ms(r.completed_at), status: r.status, flag: r.flag }),
+  votes: r => ({ completionId: r.completion_id, voterId: r.voter_id, verdict: r.verdict }),
+  activities: r => ({ id: r.id, actorId: r.actor_id, kind: r.kind, title: r.title, photo: r.photo, place: r.place || '', type: r.type, caption: r.caption || '', entryId: r.entry_id, challengeId: r.challenge_id, completionId: r.completion_id, points: r.points, createdAt: ms(r.created_at) }),
+  reactions: r => ({ activityId: r.activity_id, userId: r.user_id, emoji: r.emoji, createdAt: ms(r.created_at) }),
+};
+const TABLE = { profiles: 'profiles', challenges: 'challenges', members: 'challenge_members', items: 'challenge_items', completions: 'challenge_completions', votes: 'completion_votes', activities: 'activities', reactions: 'reactions' };
+function friendlyError(e) {
+  const m = e?.message || String(e);
+  if (e?.code === '23505' && /hash/.test(m)) return 'This photo has already been used as proof.';
+  if (e?.code === '23505') return 'Already completed.';
+  if (e?.code === '42501' || /row-level security/i.test(m)) return 'That isn\'t allowed (has the challenge ended?).';
+  if (/fetch|network/i.test(m)) return 'You seem to be offline. Try again when you\'re connected.';
+  return m;
+}
+const must = ({ data, error }) => { if (error) throw error; return data; };
+
+let syncing = null, syncAgain = false, firstSync = true;
+async function sync() {
+  if (!ME) return;
+  if (syncing) { syncAgain = true; return syncing; }
+  syncing = (async () => {
+    const before = S;
+    const rows = await Promise.all(Object.entries(TABLE).map(([k, t]) => {
+      let q = sb.from(t).select('*');
+      if (k === 'activities') q = q.order('created_at', { ascending: false }).limit(200);
+      return q.then(must).then(r => [k, r.map(MAP[k])]);
+    }));
+    S = Object.fromEntries(rows);
+    socialReady = true;
+    announceNews(before);
+    emit('challenges', {}); emit('feed', { kind: 'sync' }); emit('completion', {});
+    S.challenges.forEach(c => emit('completion:' + c.id, {}));
+    if (firstSync) { firstSync = false; if (/^#challenge\//.test(location.hash) && typeof route === 'function') route(); }
+  })().catch(e => console.warn('sync failed', e)).finally(() => { syncing = null; if (syncAgain) { syncAgain = false; sync(); } });
+  return syncing;
+}
+// A short note when friends do something while you're in the app
+function announceNews(before) {
+  if (firstSync) return;
+  const seenC = new Set(before.completions.map(c => c.id));
+  S.completions.filter(c => !seenC.has(c.id) && c.userId !== ME).forEach(c => {
+    const item = S.items.find(i => i.id === c.itemId);
+    if (item) toast(`${firstName(c.userId)} +${POINTS[item.difficulty]} · ${item.title}`);
+  });
+  const key = r => r.activityId + r.userId + r.emoji;
+  const seenR = new Set(before.reactions.map(key));
+  S.reactions.filter(r => !seenR.has(key(r)) && r.userId !== ME).forEach(r => {
+    const a = S.activities.find(x => x.id === r.activityId);
+    if (a?.actorId === ME) toast(`${firstName(r.userId)} reacted ${r.emoji} to “${activityView(a).title}”`);
+  });
+}
+let syncTimer = null;
+const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(sync, 350); };
+let channel = null;
+function listen() {
+  channel?.unsubscribe();
+  channel = sb.channel('the-list');
+  Object.values(TABLE).forEach(table => channel.on('postgres_changes', { event: '*', schema: 'public', table }, syncSoon));
+  channel.subscribe();
+}
+// Coming back to the app: catch up on anything missed while it was asleep
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ME) sync(); });
+
+async function startSocial() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return renderSocialChrome();
+  const me = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  if (!me.data) return renderSocialChrome(); // signed in but never finished the profile
+  ME = session.user.id;
+  renderSocialChrome();
+  listen();
+  await sync();
+}
+const signedIn = () => !!ME;
+
+/* ---------- Profile: a name is all it takes ---------- */
+const profileDlg = $('#profileDlg');
+let profileWait = null;
+// Resolves once you have a profile; opens the name sheet if needed. Rejects if you close it.
+function requireProfile(why) {
+  if (ME) return Promise.resolve();
+  if (!sb) { toast('Sharing needs a connection. Try again online.'); return Promise.reject(new Error('offline')); }
+  $('#profileWhy').textContent = why || 'Your friends will see this name next to your goals and photos.';
+  $('#profileErr').textContent = '';
+  profileDlg.showModal();
+  return new Promise((resolve, reject) => { profileWait = { resolve, reject }; });
+}
+async function createProfile(name) {
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session) session = must(await sb.auth.signInAnonymously()).session;
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  must(await sb.from('profiles').upsert({ id: session.user.id, name, color }));
+  ME = session.user.id;
+  renderSocialChrome();
+  listen();
+  await sync();
+}
+$('#profileForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('#profileName').value.trim();
+  if (!name) return;
+  const btn = $('#profileGo'); btn.disabled = true; btn.textContent = 'One moment…';
+  try {
+    await createProfile(name);
+    const w = profileWait; profileWait = null;
+    profileDlg.close();
+    toast(`Welcome, ${name.split(' ')[0]}`);
+    w?.resolve();
+  } catch (err) {
+    $('#profileErr').textContent = /anonymous/i.test(err.message) ? 'Sign-ups are switched off right now. Ask Alfonso to check the app settings.' : friendlyError(err);
+  } finally { btn.disabled = false; btn.textContent = 'Continue'; }
+});
+profileDlg.addEventListener('close', () => { if (profileWait) { profileWait.reject(new Error('cancelled')); profileWait = null; } });
+$('#profileCancel').onclick = () => profileDlg.close();
+
+/* ---------- Invite links ---------- */
+const appUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
+const inviteUrl = c => `${appUrl()}#join/${c.inviteCode}`;
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const inviteDlg = $('#inviteDlg');
+let inviteFor = null;
+function openInvite(c, justCreated = false) {
+  inviteFor = c;
+  $('#inviteEyebrow').textContent = justCreated ? 'Challenge created' : 'Invite friends';
+  $('#inviteTitle').textContent = c.title;
+  $('#inviteLink').value = inviteUrl(c);
+  inviteDlg.showModal();
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch { const i = $('#inviteLink'); i.select(); return document.execCommand?.('copy'); }
+}
+$('#inviteShare').onclick = async () => {
+  const url = inviteUrl(inviteFor), text = `Join my challenge “${inviteFor.title}” on The List`;
+  if (navigator.share) { try { await navigator.share({ title: inviteFor.title, text, url }); } catch { /* cancelled */ } }
+  else if (await copyText(url)) toast('Link copied');
+};
+$('#inviteCopy').onclick = async () => { if (await copyText(inviteUrl(inviteFor))) toast('Link copied'); };
+$('#inviteDone').onclick = () => inviteDlg.close();
+
+// Opening an invite link: #join/<code>. Picked up before the app routes, so it isn't treated as a page.
+const joinDlg = $('#joinDlg');
+let pendingJoin = (location.hash.match(/^#join\/([\w-]+)/) || [])[1] || null;
+if (pendingJoin) history.replaceState({ app: false }, '', '#friends');
+addEventListener('hashchange', () => {
+  const code = (location.hash.match(/^#join\/([\w-]+)/) || [])[1];
+  if (!code) return;
+  history.replaceState({ app: true }, '', '#friends');
+  setView('friends'); openJoin(code);
+});
+const codeFrom = text => (String(text).match(/#join\/([\w-]+)/) || String(text).trim().match(/^([\w-]{6,})$/) || [])[1] || null;
+let joinCode = null, joinInfo = null;
+async function openJoin(code) {
+  joinCode = code; joinInfo = null;
+  $('#joinBody').innerHTML = '<p class="join-loading">Opening invite…</p>';
+  if (!joinDlg.open) joinDlg.showModal();
+  try {
+    joinInfo = must(await sb.rpc('get_invite', { code }));
+  } catch (e) { joinInfo = null; $('#joinBody').innerHTML = `<div class="join-none"><h2>Can't open this invite</h2><p>${esc(friendlyError(e))}</p></div>`; return; }
+  if (!joinInfo) { $('#joinBody').innerHTML = `<div class="join-none"><h2>Invite not found</h2><p>The link may be incomplete, or the challenge was deleted. Ask for a new link.</p></div>`; return; }
+  renderJoin();
+}
+function renderJoin() {
+  const j = joinInfo, ended = Date.parse(j.ends_at) < Date.now();
+  const needsName = !ME;
+  // On iPhone, links open in Safari, which keeps its data apart from the Home Screen app
+  const iosBrowser = isIOS && !standalone();
+  $('#joinBody').innerHTML = `
+    <div class="eyebrow">${esc(j.creator)} invited you</div>
+    <h2>${esc(j.title)}</h2>
+    <p class="join-meta">${fmtShort(Date.parse(j.starts_at))} – ${fmtShort(Date.parse(j.ends_at))} · ${j.goals} goal${j.goals === 1 ? '' : 's'} · ${j.members} joined</p>
+    ${j.joined ? `<button class="btn solid wide" data-join="open">Open challenge</button>`
+      : ended ? `<p class="join-note">This challenge has ended.</p>`
+      : `${iosBrowser ? `<div class="join-tip"><b>Using The List from your Home Screen?</b> Copy this link, open the app, and paste it under Friends → Join with a link. Joining here keeps the challenge in Safari only.
+            <button class="link-quiet" data-join="copy">Copy link</button></div>` : ''}
+         ${needsName ? `<label class="join-name">Your name<input id="joinName" maxlength="40" placeholder="So your friends know it's you" autocomplete="given-name"></label>` : ''}
+         <p class="proof-msg warn" id="joinErr"></p>
+         <button class="btn solid wide" data-join="go">Join challenge</button>`}`;
+}
+joinDlg.addEventListener('click', async e => {
+  const a = e.target.closest('[data-join]')?.dataset.join;
+  if (!a) return;
+  if (a === 'copy') { if (await copyText(`${appUrl()}#join/${joinCode}`)) toast('Link copied'); return; }
+  if (a === 'open') { joinDlg.close(); setView('friends'); return openChallenge(joinInfo.id); }
+  const btn = e.target.closest('button'); btn.disabled = true; btn.textContent = 'Joining…';
+  try {
+    if (!ME) {
+      const name = $('#joinName').value.trim();
+      if (!name) { $('#joinErr').textContent = 'Add your name first.'; $('#joinName').focus(); return; }
+      await createProfile(name);
+    }
+    const id = must(await sb.rpc('join_challenge', { code: joinCode }));
+    await sync();
+    joinDlg.close();
+    setView('friends');
+    openChallenge(id);
+    toast(`You're in. Good luck!`);
+  } catch (err) {
+    $('#joinErr') && ($('#joinErr').textContent = /anonymous/i.test(err.message) ? 'Sign-ups are switched off right now.' : friendlyError(err));
+  } finally { if (btn.isConnected) { btn.disabled = false; btn.textContent = 'Join challenge'; } }
+});
+// "Join with a link" from inside the app (for links opened elsewhere)
+const pasteDlg = $('#pasteDlg');
+$('#pasteForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const code = codeFrom($('#pasteLink').value);
+  if (!code) { $('#pasteErr').textContent = 'That doesn\'t look like an invite link.'; return; }
+  pasteDlg.close(); openJoin(code);
+});
+$('#pasteCancel').onclick = () => pasteDlg.close();
+function openPaste() {
+  $('#pasteLink').value = ''; $('#pasteErr').textContent = '';
+  pasteDlg.showModal();
+}
+
+/* ---------- Photos ---------- */
+// Data URLs (photos taken in the app) are uploaded; built-in images and web URLs are shared as they are
+const uploaded = new Map(); // same photo, same upload
+async function sharedPhoto(src) {
+  if (!src || !src.startsWith('data:')) return src || null;
+  if (uploaded.has(src)) return uploaded.get(src);
+  const blob = await (await fetch(src)).blob();
+  const path = `${ME}/${uid()}.jpg`;
+  must(await sb.storage.from('photos').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false }));
+  const url = sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
+  uploaded.set(src, url);
+  return url;
+}
+
+/* ---------- API (same shape as before; the UI didn't change) ---------- */
+const needMe = () => { if (!ME) throw new Error('Create your profile first.'); };
 const api = {
   on(type, fn) { const h = e => fn(e.detail); bus.addEventListener(type, h); return () => bus.removeEventListener(type, h); },
-  profile: id => S.profiles.find(p => p.id === id) || { id, name: 'Unknown', color: '#555' },
+  profile: id => S.profiles.find(p => p.id === id) || { id, name: id === ME ? 'You' : 'Someone', color: '#555' },
   friends: () => S.profiles.filter(p => p.id !== ME),
 
   // challenges ------------------------------------------------------
@@ -115,80 +296,75 @@ const api = {
   },
   status(c, now = Date.now()) { return now < c.startsAt ? 'upcoming' : now > c.endsAt ? 'ended' : 'active'; },
   async challenges() {
-    await latency();
     return S.challenges.filter(c => api.membersOf(c.id).includes(ME)).sort((a, b) => b.endsAt - a.endsAt);
   },
   async createChallenge({ title, startsAt, endsAt, memberIds, items: list }) {
-    await latency();
-    const id = uid();
-    S.challenges.push({ id, title, startsAt, endsAt, createdBy: ME });
-    [ME, ...memberIds].forEach(userId => S.members.push({ challengeId: id, userId }));
-    list.forEach(it => S.items.push({ id: uid(), challengeId: id, title: it.title, difficulty: it.difficulty, entryId: it.entryId || null }));
-    persist(); emit('challenges', { id });
-    return id;
+    needMe();
+    const c = must(await sb.from('challenges').insert({ title, starts_at: iso(startsAt), ends_at: iso(endsAt) }).select().single());
+    must(await sb.from('challenge_members').insert([ME, ...memberIds].map(user_id => ({ challenge_id: c.id, user_id }))));
+    if (list.length) must(await sb.from('challenge_items').insert(list.map(it => ({ challenge_id: c.id, title: it.title.trim(), difficulty: it.difficulty }))));
+    await sync();
+    return c.id;
   },
   async addItem(challengeId, { title, difficulty }) {
-    await latency();
-    S.items.push({ id: uid(), challengeId, title, difficulty });
-    persist(); emit('completion:' + challengeId, { kind: 'item-added' });
+    needMe();
+    must(await sb.from('challenge_items').insert({ challenge_id: challengeId, title, difficulty }));
+    await sync();
   },
   // Completing requires a proof photo. Checks: not already done, challenge running, photo not reused,
-  // and the photo's capture time (file timestamp in this mock; EXIF on the backend) inside the window.
-  async completeItem(itemId, { photo, hash, takenAt }, userId = ME) {
-    await latency();
+  // and the photo's capture time inside the window (flagged for friends otherwise).
+  async completeItem(itemId, { photo, hash, takenAt }) {
+    needMe();
     const item = S.items.find(i => i.id === itemId);
     const c = item && api.challengeSync(item.challengeId);
     if (!item || !c) throw new Error('This item no longer exists.');
     if (!photo) throw new Error('A photo proof is required.');
     if (api.status(c) !== 'active') throw new Error('This challenge is not running.');
-    if (S.completions.some(x => x.itemId === itemId && x.userId === userId)) throw new Error('Already completed.');
-    if (hash && S.completions.some(x => x.hash === hash)) throw new Error('This photo has already been used as proof.');
-    const flagged = takenAt && (takenAt < c.startsAt || takenAt > Date.now() + 60e3);
-    const completion = { id: uid(), itemId, challengeId: c.id, userId, proof: photo, hash, takenAt, completedAt: Date.now(), status: 'counted', flag: flagged ? 'Photo taken before the challenge started' : null };
-    S.completions.push(completion);
-    const actId = uid();
-    S.activities.push({ id: actId, actorId: userId, kind: 'challenge_item', title: item.title, photo, type: item.difficulty === 'hard' ? 'activity' : 'personal', place: '', createdAt: completion.completedAt, challengeId: c.id, points: POINTS[item.difficulty], completionId: completion.id });
-    persist();
-    emit('completion:' + c.id, { completion, item });
-    emit('completion', { completion, item });
-    emit('feed', { kind: 'new', activityId: actId });
-    return completion;
+    if (S.completions.some(x => x.itemId === itemId && x.userId === ME)) throw new Error('Already completed.');
+    const flag = takenAt && (takenAt < c.startsAt || takenAt > Date.now() + 60e3) ? 'Photo taken before the challenge started' : null;
+    try {
+      const url = await sharedPhoto(photo);
+      const comp = must(await sb.from('challenge_completions').insert({ challenge_id: c.id, item_id: itemId, proof_url: url, hash, taken_at: takenAt ? iso(takenAt) : null, flag }).select().single());
+      must(await sb.from('activities').insert({ kind: 'challenge_item', title: item.title, photo: url, type: item.difficulty === 'hard' ? 'activity' : 'personal', challenge_id: c.id, completion_id: comp.id, points: POINTS[item.difficulty] }));
+      await sync();
+      return MAP.completions(comp);
+    } catch (e) { throw new Error(friendlyError(e)); }
   },
   async vote(completionId, verdict) {
-    await latency();
-    S.votes = S.votes.filter(v => !(v.completionId === completionId && v.voterId === ME));
-    S.votes.push({ completionId, voterId: ME, verdict });
-    const comp = S.completions.find(c => c.id === completionId);
-    const others = api.membersOf(comp.challengeId).filter(u => u !== comp.userId).length;
-    const disputes = S.votes.filter(v => v.completionId === completionId && v.verdict === 'dispute').length;
-    comp.status = disputes > others / 2 ? 'rejected' : disputes ? 'disputed' : 'counted';
-    persist(); emit('completion:' + comp.challengeId, { completion: comp }); emit('completion', { completion: comp });
+    needMe();
+    must(await sb.from('completion_votes').upsert({ completion_id: completionId, voter_id: ME, verdict }, { onConflict: 'completion_id,voter_id' }));
+    await sync();
   },
   myVote: completionId => S.votes.find(v => v.completionId === completionId && v.voterId === ME)?.verdict || null,
 
   // feed ------------------------------------------------------------
-  async feed() {
-    await latency();
-    return [...S.activities].sort((a, b) => b.createdAt - a.createdAt).slice(0, 60);
-  },
+  async feed() { return [...S.activities].sort((a, b) => b.createdAt - a.createdAt).slice(0, 60); },
   reactionsOf: id => S.reactions.filter(r => r.activityId === id),
-  async react(activityId, emoji, userId = ME) {
-    const had = S.reactions.findIndex(r => r.activityId === activityId && r.userId === userId && r.emoji === emoji);
-    if (had >= 0) S.reactions.splice(had, 1); else S.reactions.push({ activityId, userId, emoji, createdAt: Date.now() });
-    persist(); emit('feed', { kind: 'reaction', activityId, userId, emoji, added: had < 0 });
+  async react(activityId, emoji) {
+    if (!ME) return requireProfile('Pick a name so your friends know who reacted.').catch(() => {});
+    // Optimistic: show it now, then save
+    const had = S.reactions.findIndex(r => r.activityId === activityId && r.userId === ME && r.emoji === emoji);
+    if (had >= 0) S.reactions.splice(had, 1); else S.reactions.push({ activityId, userId: ME, emoji, createdAt: Date.now() });
+    emit('feed', { kind: 'reaction', activityId, userId: ME, emoji, added: had < 0 });
+    const q = had >= 0
+      ? sb.from('reactions').delete().match({ activity_id: activityId, user_id: ME, emoji })
+      : sb.from('reactions').insert({ activity_id: activityId, emoji });
+    const { error } = await q;
+    if (error) { toast(friendlyError(error)); sync(); }
   },
-  // Your own completions publish automatically (mirrors a database trigger on entries.completed_at)
-  publishEntry(entry) {
-    if (S.activities.some(a => a.entryId === entry.id)) return;
-    S.activities.push({ id: uid(), actorId: ME, kind: 'entry_completed', entryId: entry.id, title: entry.title, place: entry.place, type: entry.type, createdAt: Date.now() });
-    persist(); emit('feed', { kind: 'new' });
+  // Your own completions show up in your friends' feeds (only if you're signed in)
+  async publishEntry(entry) {
+    if (!ME) return;
+    try {
+      const photo = await sharedPhoto(coverOf(entry));
+      must(await sb.from('activities').upsert({ actor_id: ME, kind: 'entry_completed', entry_id: entry.id, title: entry.title, place: entry.place || null, type: entry.type, photo, caption: entry.memory?.highlight || null }, { onConflict: 'actor_id,entry_id' }));
+      syncSoon();
+    } catch (e) { console.warn('publish failed', e); }
   },
-  unpublishEntry(entryId) {
-    const a = S.activities.find(x => x.entryId === entryId);
-    if (!a) return;
-    S.activities = S.activities.filter(x => x !== a);
-    S.reactions = S.reactions.filter(r => r.activityId !== a.id);
-    persist(); emit('feed', { kind: 'removed' });
+  async unpublishEntry(entryId) {
+    if (!ME) return;
+    await sb.from('activities').delete().match({ actor_id: ME, entry_id: entryId });
+    syncSoon();
   },
 };
 
@@ -198,56 +374,6 @@ function activityView(a) {
   const e = items.find(i => i.id === a.entryId);
   return e ? { ...a, title: e.title, place: e.place, type: e.type, photo: coverOf(e), caption: e.memory?.highlight || '' } : a;
 }
-
-/* ---------- Simulated friends (stand-in for other people's devices) ---------- */
-const FRIEND_POSTS = [
-  ['lena', 'Swim in a cenote', 'night-dive-with-manta-rays', 'Tulum, Mexico', 'activity'],
-  ['marco', 'Eat at a ramen counter at 2 am', 'omakase-in-ginza', 'Tokyo, Japan', 'food'],
-  ['aiko', 'Walk the Philosopher\'s Path in bloom', 'cherry-blossoms-in-kyoto', 'Kyoto, Japan', 'trip'],
-  ['sam', 'Watch flamenco in a tablao', 'flamenco-in-seville', 'Seville, Spain', 'culture'],
-  ['lena', 'See Petra at sunrise', 'sunrise-at-petra', 'Petra, Jordan', 'culture'],
-  ['marco', 'Plant a tree', 'plant-a-tree-that-outlives-me', 'Umbria, Italy', 'personal'],
-];
-function simTick() {
-  if (document.hidden) return;
-  const r = Math.random();
-  const now = Date.now();
-  const active = S.challenges.filter(c => api.status(c, now) === 'active');
-  if (r < 0.5 && active.length) {
-    // A friend completes something in a running challenge
-    const c = active[Math.floor(Math.random() * active.length)];
-    const friends = api.membersOf(c.id).filter(u => u !== ME);
-    const open = api.itemsOf(c.id).flatMap(i => friends.filter(u => !S.completions.some(x => x.itemId === i.id && x.userId === u)).map(u => [i, u]));
-    if (!open.length) return;
-    const [item, userId] = open[Math.floor(Math.random() * open.length)];
-    const pool = IDEAS.map(i => i.image);
-    api.completeItem(item.id, { photo: pool[Math.floor(Math.random() * pool.length)], takenAt: now - 3600e3 }, userId).then(() => {
-      toast(`${api.profile(userId).name.split(' ')[0]} +${POINTS[item.difficulty]} · ${item.title}`);
-    }).catch(() => {});
-  } else if (r < 0.8) {
-    // A friend reacts to one of your posts (or someone else's)
-    const mine = S.activities.filter(a => a.actorId === ME);
-    const pool = mine.length && Math.random() < 0.7 ? mine : S.activities;
-    const a = pool[Math.floor(Math.random() * pool.length)];
-    const friend = api.friends().filter(f => f.id !== a.actorId)[Math.floor(Math.random() * 3)];
-    if (!a || !friend) return;
-    const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-    if (S.reactions.some(x => x.activityId === a.id && x.userId === friend.id && x.emoji === emoji)) return;
-    api.react(a.id, emoji, friend.id);
-    if (a.actorId === ME) toast(`${friend.name.split(' ')[0]} reacted ${emoji} to “${activityView(a).title}”`);
-  } else {
-    // A friend posts a new accomplishment
-    const used = new Set(S.activities.map(a => a.title));
-    const next = FRIEND_POSTS.find(p => !used.has(p[1]));
-    if (!next) return;
-    const [actorId, title, photo, place, type] = next;
-    S.activities.push({ id: uid(), actorId, kind: 'entry_completed', title, photo: `img/${photo}.jpg`, place, type, createdAt: Date.now() });
-    persist(); emit('feed', { kind: 'new' });
-  }
-}
-let simTimer = null;
-function scheduleSim() { clearTimeout(simTimer); simTimer = setTimeout(() => { simTick(); scheduleSim(); }, 20000 + Math.random() * 25000); }
-scheduleSim();
 
 /* ---------- Shared UI bits ---------- */
 const initials = n => n === 'You' ? 'You' : n.split(' ').map(w => w[0]).join('').slice(0, 2);
@@ -285,19 +411,33 @@ function lightboxSrc(src, html = '') {
 /* ---------- Friends view (Feed | Challenges) ---------- */
 let friendsTab = 'feed';
 let feedCache = [];
+// Signed out: one card explaining how friends work, instead of an empty feed
+const welcomeCard = () => `<div class="empty social-welcome">
+    <h2>Challenge your friends</h2>
+    <p>Start a challenge, send the link, and race each other through your goals, with photo proof and a live leaderboard. All it takes is a name.</p>
+    <div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>
+    <p class="hint-line">Your bucket list stays private on your phone. Only challenges are shared.</p>
+  </div>`;
+function renderSocialChrome() {
+  if (typeof currentView !== 'undefined' && currentView === 'friends' && !detail) renderFriendsShell();
+}
 function renderFriendsShell() {
   document.querySelectorAll('[data-ftab]').forEach(b => b.classList.toggle('active', b.dataset.ftab === friendsTab));
   $('#feedPane').hidden = friendsTab !== 'feed';
   $('#challengesPane').hidden = friendsTab !== 'challenges';
-  $('#friendRoster').innerHTML = api.friends().map(f => `<span class="roster-p">${avatar(f.id, 34)}<small>${esc(f.name.split(' ')[0])}</small></span>`).join('');
+  const me = ME && api.profile(ME);
+  $('#friendRoster').innerHTML = (me ? `<span class="roster-p">${avatar(ME, 34)}<small>You</small></span>` : '') +
+    api.friends().map(f => `<span class="roster-p">${avatar(f.id, 34)}<small>${esc(f.name.split(' ')[0])}</small></span>`).join('');
+  if (!ME) { $('#feed').innerHTML = welcomeCard(); $('#challengeList').innerHTML = welcomeCard(); return; }
   if (friendsTab === 'feed') renderFeed(); else renderChallenges();
 }
 async function renderFeed(highlightNew = false) {
   const before = new Set(feedCache.map(a => a.id));
   feedCache = await api.feed();
   if (currentView !== 'friends' || friendsTab !== 'feed') return;
+  if (!ME) return;
   $('#feed').innerHTML = feedCache.length ? feedCache.map(a => post(activityView(a), highlightNew && !before.has(a.id))).join('')
-    : `<div class="empty"><h2>Quiet for now</h2><p>Complete something from your list and it will appear here for your friends.</p></div>`;
+    : `<div class="empty"><h2>Quiet for now</h2><p>${api.friends().length ? 'Complete something from your list and it will appear here for your friends.' : 'Your friends\' completions show up here once they join one of your challenges.'}</p>${api.friends().length ? '' : '<div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>'}</div>`;
 }
 function post(a, isNew) {
   const p = api.profile(a.actorId);
@@ -324,12 +464,12 @@ function post(a, isNew) {
 
 async function renderChallenges() {
   const list = await api.challenges();
-  if (currentView !== 'friends' || friendsTab !== 'challenges') return;
+  if (currentView !== 'friends' || friendsTab !== 'challenges' || !ME) return;
   const groups = [['active', 'Running'], ['upcoming', 'Starting soon'], ['ended', 'Finished']];
   $('#challengeList').innerHTML = list.length ? groups.map(([st, label]) => {
     const g = list.filter(c => api.status(c) === st);
     return g.length ? `<div class="strip-head"><h3>${label}</h3><span class="eyebrow">${g.length}</span></div><div class="ch-cards">${g.map(chCard).join('')}</div>` : '';
-  }).join('') : `<div class="empty"><h2>No challenges yet</h2><p>Pick a few goals, a timeframe and some friends.</p><button class="btn solid" data-new-ch>New challenge</button></div>`;
+  }).join('') : `<div class="empty"><h2>No challenges yet</h2><p>Pick a few goals and a timeframe, then send the link to your friends.</p><div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div></div>`;
 }
 function chCard(c) {
   const lb = api.leaderboard(c.id);
@@ -339,12 +479,12 @@ function chCard(c) {
   const st = api.status(c);
   const leader = lb[0];
   return `<button class="ch-card ${st}" data-open-ch="${c.id}">
-    <div class="ch-top"><span class="eyebrow">${members.length === 2 ? '1-on-1' : `Group · ${members.length}`}</span><span class="ch-when">${daysLeft(c)}</span></div>
+    <div class="ch-top"><span class="eyebrow">${members.length === 1 ? 'Waiting for friends' : members.length === 2 ? '1-on-1' : `Group · ${members.length}`}</span><span class="ch-when">${daysLeft(c)}</span></div>
     <h3>${esc(c.title)}</h3>
     <div class="ch-bar"><i style="width:${progressOf(c) * 100}%"></i></div>
     <div class="ch-foot">
       <span class="stack">${members.slice(0, 5).map(u => avatar(u, 26)).join('')}</span>
-      <span class="ch-rank">${st === 'ended' ? (myRank === 1 ? '🏆 You won' : `${esc(firstName(leader.userId))} won`) : `#${myRank} · ${me?.points || 0} pts`}</span>
+      <span class="ch-rank">${st === 'ended' ? (myRank === 1 ? '🏆 You won' : `${esc(firstName(leader?.userId))} won`) : `#${myRank} · ${me?.points || 0} pts`}</span>
     </div>
   </button>`;
 }
@@ -383,11 +523,13 @@ function renderChallengePage(c, freshCompletionId) {
         <h2>${esc(c.title)}</h2>
         <div class="ch-meta"><span class="${st === 'active' ? 'live' : ''}">${st === 'active' ? 'Live' : st === 'ended' ? 'Finished' : 'Upcoming'}</span><span>${daysLeft(c)}</span><span>${its.length} goals · ${total} pts up for grabs</span></div>
         <div class="ch-bar big"><i style="width:${progressOf(c) * 100}%"></i></div>
+        ${st !== 'ended' ? `<button class="btn solid ch-invite" data-invite="${c.id}">${members.length === 1 ? 'Invite friends to start racing' : 'Invite friends'}</button>` : ''}
       </div>
     </header>
     <section class="ch-body">
       <div class="board">
         <div class="board-head"><h3>Leaderboard</h3>${st === 'active' ? '<span class="live-dot">Live</span>' : ''}</div>
+        ${members.length === 1 ? '<p class="hint-line board-solo">Just you so far. Friends appear here as soon as they open your link.</p>' : ''}
         ${lb.map((r, n) => {
           const delta = lastBoard[r.userId] != null && r.points > lastBoard[r.userId] ? r.points - lastBoard[r.userId] : 0;
           return `<div class="lb-row ${r.userId === ME ? 'me' : ''} ${delta ? 'bump' : ''}" data-user="${r.userId}">
@@ -532,9 +674,9 @@ function renderChForm() {
       <div class="chips chips-wrap">${[['month', 'Rest of this month'], ['summer', 'Summer'], ['year', 'Rest of the year'], ['next', 'Next year'], ['custom', 'Custom']].map(([k, l]) => `<button type="button" class="chip ${chDraft.when === k ? 'active' : ''}" data-when="${k}">${l}</button>`).join('')}</div>
       <div class="row dates"><input type="date" name="start" value="${chDraft.start}" ${chDraft.when === 'custom' ? '' : 'readonly'}><span>→</span><input type="date" name="end" value="${chDraft.end}" ${chDraft.when === 'custom' ? '' : 'readonly'}></div>
     </div>
-    <div class="full field">With <span class="hint-line">${chDraft.friends.size === 1 ? '1-on-1 challenge' : chDraft.friends.size > 1 ? `Group of ${chDraft.friends.size + 1}` : 'Pick one friend for a 1-on-1, or several for a group'}</span>
+    ${api.friends().length ? `<div class="full field">With <span class="hint-line">${chDraft.friends.size ? `Adding ${chDraft.friends.size} now. Anyone else can join with the link.` : 'Add friends from earlier challenges, or just send the link afterwards'}</span>
       <div class="pick-friends">${api.friends().map(f => `<button type="button" class="pf ${chDraft.friends.has(f.id) ? 'on' : ''}" data-friend="${f.id}">${avatar(f.id, 44)}<small>${esc(f.name.split(' ')[0])}</small></button>`).join('')}</div>
-    </div>
+    </div>` : `<p class="full hint-line ch-link-note">You'll get a link to invite friends as soon as it's created.</p>`}
     <div class="full field">Goals <span class="hint-line">Easy 10 · Medium 25 · Hard 50 points</span>
       <div class="ch-items">${chDraft.items.map((it, n) => `
         <div class="ch-item-row">
@@ -584,12 +726,17 @@ $('#chForm').addEventListener('submit', async e => {
   e.preventDefault();
   const goals = chDraft.items.filter(i => i.title.trim());
   const start = new Date(chDraft.start + 'T00:00:00').getTime(), end = new Date(chDraft.end + 'T23:59:59').getTime();
-  const err = !chDraft.title.trim() ? 'Give it a name.' : !chDraft.friends.size ? 'Pick at least one friend.' : !goals.length ? 'Add at least one goal.' : !(end > start) ? 'The end date must be after the start.' : '';
+  const err = !chDraft.title.trim() ? 'Give it a name.' : !goals.length ? 'Add at least one goal.' : !(end > start) ? 'The end date must be after the start.' : '';
   if (err) { $('#chErr').textContent = err; return; }
-  const id = await api.createChallenge({ title: chDraft.title.trim(), startsAt: start, endsAt: end, memberIds: [...chDraft.friends], items: goals });
-  chDlg.close();
-  toast('Challenge started');
-  openChallenge(id);
+  const btn = e.submitter || $('#chForm .btn.solid'); btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const id = await api.createChallenge({ title: chDraft.title.trim(), startsAt: start, endsAt: end, memberIds: [...chDraft.friends], items: goals });
+    chDlg.close();
+    setView('friends');
+    openChallenge(id);
+    openInvite(api.challengeSync(id), true);
+  } catch (ex) { $('#chErr').textContent = friendlyError(ex); }
+  finally { btn.disabled = false; btn.textContent = 'Start challenge'; }
 });
 
 /* ---------- Wire up ---------- */
@@ -597,7 +744,10 @@ document.addEventListener('click', e => {
   const t = e.target;
   const ftab = t.closest('[data-ftab]');
   if (ftab) { friendsTab = ftab.dataset.ftab; renderFriendsShell(); return; }
-  if (t.closest('[data-new-ch]')) return openNewChallenge();
+  if (t.closest('[data-new-ch]')) return requireProfile('Pick a name for your challenges. Friends will see it on the leaderboard.').then(openNewChallenge, () => {});
+  if (t.closest('[data-join-link]')) return openPaste();
+  const inv = t.closest('[data-invite]');
+  if (inv) return openInvite(api.challengeSync(inv.dataset.invite));
   const och = t.closest('[data-open-ch]');
   if (och) return openChallenge(och.dataset.openCh);
   const ci = t.closest('[data-complete-item]');
@@ -606,6 +756,7 @@ document.addEventListener('click', e => {
   if (pr) return openProofViewer(pr.dataset.proof);
   const add = t.closest('[data-ch-add]');
   if (add) {
+    if (!ME) return;
     const title = prompt('New goal');
     if (title?.trim()) {
       const d = (prompt('Difficulty: easy, medium or hard', 'medium') || 'medium').toLowerCase();
@@ -652,9 +803,12 @@ updateFriendsBadge();
 
 // Called by the main app
 function onEntryCompleted(it) { api.publishEntry(it); }
+function onEntryUpdated(it) { if (it.done && S.activities.some(a => a.actorId === ME && a.entryId === it.id)) api.publishEntry(it); }
 function onEntryReopened(it) { api.unpublishEntry(it.id); }
 function renderFriends() {
   localStorage.setItem('bucketlist.feedSeen', Date.now());
   updateFriendsBadge();
   renderFriendsShell();
 }
+
+startSocial();
