@@ -841,7 +841,7 @@ body.wr-open{overflow:hidden}
   .sheet.open{pointer-events:auto}
   .sheet-backdrop{position:absolute;inset:0;background:rgba(6,5,4,.62);opacity:0;transition:opacity .45s var(--ease)}
   .sheet.open .sheet-backdrop{opacity:1}
-  .sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:92dvh;display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translateY(105%);transition:transform .5s cubic-bezier(.32,.72,0,1)}
+  .sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:calc(100dvh - env(safe-area-inset-top) - 16px);display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translateY(105%);transition:transform .5s cubic-bezier(.32,.72,0,1)}
   .sheet.open .sheet-panel{transform:none}
   .sheet-panel .grab{position:absolute;top:0;left:0;right:0}
   .sheet-x{position:absolute;top:14px;right:14px;z-index:6;width:34px;height:34px;border-radius:50%;background:rgba(12,11,10,.55);border:1px solid rgba(237,228,214,.25);color:var(--text);font-size:18px;line-height:1}
@@ -864,12 +864,23 @@ body.wr-open{overflow:hidden}
   /* top:auto un-pins the modal from the top edge, so the sheet is only as tall as its content */
   dialog,#share,#ideaDlg,#onboard{width:100vw;max-width:100vw;height:auto;max-height:94dvh;top:auto;bottom:0;margin:0;border:0;border-radius:22px 22px 0 0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -24px 70px rgba(0,0,0,.55)}
   dialog[open]{animation:sheetUp .5s cubic-bezier(.32,.72,0,1)}
-  dialog,#share,#ideaDlg,#onboard{bottom:var(--kb,0px);max-height:min(94dvh,calc(var(--vvh,100dvh) - 12px));transition:bottom .25s var(--ease)}
+  /* Never under the status bar: iOS keeps touches up there, so the handle would be unreachable */
+  dialog,#share,#ideaDlg,#onboard{bottom:var(--kb,0px);max-height:min(calc(100dvh - env(safe-area-inset-top) - 16px),calc(var(--vvh,100dvh) - 12px));transition:bottom .25s var(--ease)}
   dialog:focus{outline:none}
   /* Forms carry the home-indicator inset in their sticky action bar, so nothing peeks out below it */
   dialog:has(form){padding-bottom:0}
+  .ch-form{gap:16px;padding-top:28px}
+  .ch-form h2{font-size:24px}
+  .ch-form .chips-wrap{gap:4px}
+  .ch-form .chips-wrap .chip{padding:7px 12px}
+  .ch-form .row.dates{margin-top:6px}
+  .pick-friends{gap:12px}
+  .pick-friends .pf small{font-size:11px}
+  .ch-item-row input{min-width:0}
+  .form-actions .btn{white-space:nowrap;padding-left:14px;padding-right:14px}
   .sheet-backdrop{touch-action:none}
-  dialog .grab{position:sticky;top:0;margin-bottom:-28px}
+  dialog .grab{position:sticky;top:0;margin-bottom:-36px;height:36px}
+  dialog h2{touch-action:none}
   #onboard .ob-stack{height:min(420px,50dvh)}
   .idea-card{height:min(380px,48dvh)}
   .idea-card .desc{display:-webkit-box}
@@ -1751,7 +1762,7 @@ document.querySelectorAll('dialog').forEach(d => {
   const g = document.createElement('div');
   g.className = 'grab'; g.setAttribute('aria-hidden', 'true');
   d.prepend(g);
-  dragToDismiss(d, '.grab', () => d.close());
+  dragToDismiss(d, '.grab, h2', () => d.close());
   // Tapping the backdrop closes it, except forms where a stray tap would lose typing
   if (['dlg', 'mdlg', 'chDlg'].includes(d.id)) return;
   d.addEventListener('click', e => {
