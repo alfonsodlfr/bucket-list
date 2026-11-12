@@ -526,7 +526,7 @@ function renderChForm() {
     <h2>New challenge</h2>
     <label class="full">Name<input name="title" required maxlength="60" placeholder="Summer of Yes" value="${esc(chDraft.title)}"></label>
     <div class="full field">Timeframe
-      <div class="chips wrap">${[['month', 'Rest of this month'], ['summer', 'Summer'], ['year', 'Rest of the year'], ['next', 'Next year'], ['custom', 'Custom']].map(([k, l]) => `<button type="button" class="chip ${chDraft.when === k ? 'active' : ''}" data-when="${k}">${l}</button>`).join('')}</div>
+      <div class="chips chips-wrap">${[['month', 'Rest of this month'], ['summer', 'Summer'], ['year', 'Rest of the year'], ['next', 'Next year'], ['custom', 'Custom']].map(([k, l]) => `<button type="button" class="chip ${chDraft.when === k ? 'active' : ''}" data-when="${k}">${l}</button>`).join('')}</div>
       <div class="row dates"><input type="date" name="start" value="${chDraft.start}" ${chDraft.when === 'custom' ? '' : 'readonly'}><span>→</span><input type="date" name="end" value="${chDraft.end}" ${chDraft.when === 'custom' ? '' : 'readonly'}></div>
     </div>
     <div class="full field">With <span class="hint-line">${chDraft.friends.size === 1 ? '1-on-1 challenge' : chDraft.friends.size > 1 ? `Group of ${chDraft.friends.size + 1}` : 'Pick one friend for a 1-on-1, or several for a group'}</span>
