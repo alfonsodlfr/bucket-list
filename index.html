@@ -433,12 +433,16 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .post.is-new{animation:newpost 1s var(--ease) both}
 @keyframes newpost{from{opacity:0;transform:translateY(-24px) scale(.98)}}
 .post-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.post-head>div{flex:1;min-width:0;font-size:14px;line-height:1.35}
-.post-head b{font-weight:500}
-.post-head span{color:var(--muted)}
-.post-head small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.post-ch{flex:none;font-size:11px;letter-spacing:.06em;color:var(--gold);border:1px solid rgba(200,169,106,.4);border-radius:999px;padding:6px 11px;white-space:nowrap}
-.post-ch:hover{background:rgba(200,169,106,.12)}
+.post-who{flex:1;min-width:0;line-height:1.35}
+.post-line{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:14px}
+.post-line b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-ago{flex:none;font-size:12px;color:var(--muted)}
+.post-ago::before{content:"·";margin-right:8px}
+.post-head small{display:block;margin-top:1px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Challenge pill sits on the photo, top-left, like a sticker */
+.post-ch{position:absolute;top:14px;left:14px;z-index:2;max-width:calc(100% - 28px);display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;font-size:12px;color:#fff;background:rgba(12,11,10,.55);border:1px solid rgba(255,255,255,.18);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.post-ch b{flex:none;font-weight:500;font-size:11px;color:#14110f;background:var(--gold);border-radius:999px;padding:3px 8px}
+.post-ch:hover{background:rgba(12,11,10,.75)}
 .post-photo{position:relative;aspect-ratio:4/5;border-radius:6px;overflow:hidden;cursor:zoom-in}
 .post-photo.no-photo{cursor:default}
 .post-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(8,7,6,.8),rgba(8,7,6,0) 45%)}
@@ -662,8 +666,8 @@ body.wr-open{overflow:hidden}
   .seg-tabs button{padding:8px 14px}
   .feed{gap:28px}
   .post-title h3{font-size:22px}
-  .post-head{flex-wrap:wrap}
-  .post-ch{order:3;margin-left:50px;max-width:calc(100% - 50px);overflow:hidden;text-overflow:ellipsis}
+  .post-head{margin-bottom:10px}
+  .post-ch{top:12px;left:12px;max-width:calc(100% - 24px)}
   .react{height:34px;padding:0 9px}
   .ch-hero{padding:calc(var(--bar-h) + 40px) 0 26px}
   .ch-hero .inner{padding:0 20px}

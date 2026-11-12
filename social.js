@@ -305,14 +305,17 @@ function post(a, isNew) {
   const counts = EMOJIS.map(e => [e, reacts.filter(r => r.emoji === e).length, reacts.some(r => r.emoji === e && r.userId === ME)]);
   const ch = a.challengeId && api.challengeSync(a.challengeId);
   const t = TYPES[a.type] || TYPES.other;
-  const verb = a.kind === 'challenge_item' ? 'completed a challenge item' : 'completed';
+  // Header stays two short lines: who · when, then where. What happened lives on the photo.
   return `<article class="post ${isNew ? 'is-new' : ''}" data-post="${a.id}">
     <header class="post-head">${avatar(a.actorId, 38)}
-      <div><b>${esc(a.actorId === ME ? 'You' : p.name)}</b> <span>${verb}</span><small>${ago(a.createdAt)}${a.place ? ' · ' + esc(a.place) : ''}</small></div>
-      ${ch ? `<button class="post-ch" data-open-ch="${ch.id}">+${a.points} · ${esc(ch.title)}</button>` : ''}
+      <div class="post-who">
+        <div class="post-line"><b>${esc(a.actorId === ME ? 'You' : p.name)}</b><span class="post-ago">${ago(a.createdAt)}</span></div>
+        ${a.place ? `<small>${esc(a.place)}</small>` : ''}
+      </div>
     </header>
     <div class="post-photo ${a.photo ? '' : 'no-photo'}" style="background:${a.photo ? `${cssUrl(a.photo)} center/cover` : toneBg(t)}" ${a.photo ? `data-zoom-photo="${esc(a.photo)}"` : ''}>
-      <div class="post-title"><span class="tag">${t.label}</span><h3>${esc(a.title)}</h3></div>
+      ${ch ? `<button class="post-ch" data-open-ch="${ch.id}"><b>+${a.points}</b>${esc(ch.title)}</button>` : ''}
+      <div class="post-title"><span class="tag">✓ Completed · ${t.label}</span><h3>${esc(a.title)}</h3></div>
     </div>
     ${a.caption ? `<p class="post-cap">${esc(a.caption)}</p>` : ''}
     <div class="reacts">${counts.map(([e, n, mine]) => `<button class="react ${mine ? 'mine' : ''} ${n ? 'has' : ''}" data-react="${e}" data-act-id="${a.id}"><span>${e}</span>${n ? `<b>${n}</b>` : ''}</button>`).join('')}</div>

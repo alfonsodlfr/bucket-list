@@ -4,7 +4,7 @@
    - Photos in img/, icons and Google Fonts: cache first; they never change.
    - Everything else (Wikipedia/Wikivoyage lookups): network only.
    Bump VERSION on every deploy: a changed sw.js is what tells installed apps to update. */
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const MEDIA = 'media-v1';
 const SHELL_FILES = [
