@@ -678,23 +678,46 @@ body.wr-open{overflow:hidden}
   .wrapped-pill{margin-top:16px}
 }
 
+/* "+" sheet */
+.tab-add,.map-full-btn,.map-done{display:none}
+#createDlg{width:min(440px,92vw)}
+.create{padding:28px 22px 24px;display:grid;gap:10px}
+.create .eyebrow{margin:0 4px 8px}
+.create-opt{display:flex;align-items:center;gap:16px;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:12px;transition:border-color .3s,background .3s}
+.create-opt:hover,.create-opt:active{border-color:var(--gold);background:rgba(200,169,106,.06)}
+.create-opt .ico{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(200,169,106,.12)}
+.create-opt svg{width:20px;height:20px;fill:none;stroke:var(--gold);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.create-opt b{display:block;font-weight:400;font-size:16px;margin-bottom:2px}
+.create-opt small{color:var(--muted);font-size:13px}
+
 /* Bottom sheets: only used on mobile */
 .sheet,.grab{display:none}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
 
 /* ===================== Mobile ===================== */
 @media (max-width:760px){
-  :root{--nav-h:62px;--bar-h:56px}
+  /* No top bar on phones: --bar-h is just the status-bar inset */
+  :root{--nav-h:64px;--bar-h:env(safe-area-inset-top)}
   body{-webkit-tap-highlight-color:transparent}
   .wrap{padding:calc(var(--bar-h) + 26px) 16px calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))}
 
   /* Top bar: brand + back + add. Tabs become a bottom bar */
-  .topbar{height:calc(var(--bar-h) + env(safe-area-inset-top));padding:env(safe-area-inset-top) 16px 0;gap:12px;background:rgba(12,11,10,.94);backdrop-filter:none;-webkit-backdrop-filter:none}
-  .brand{display:block;font-size:18px}
-  body.in-detail .brand{display:none}
-  .back{margin-left:-6px}
-  .add-btn{width:38px;height:38px;padding:0!important;display:grid;place-items:center;font-size:22px;letter-spacing:0;line-height:1}
-  .add-btn .lbl{display:none}.add-btn .plus{display:block}
+  /* The top bar is gone: it only hosts the bottom tabs and a floating Back button.
+     (No backdrop-filter here: it would trap the fixed-position tabs inside it.) */
+  .topbar{height:0;padding:0;border:0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .topbar .brand,.topbar > .spacer,.add-btn{display:none}
+  body::after{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);z-index:41;pointer-events:none;background:rgba(12,11,10,.92)}
+  .back{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:14px;z-index:46;width:42px;height:42px;margin:0;padding:0;justify-content:center;border-radius:50%;font-size:0;color:var(--text);background:rgba(12,11,10,.55);border:1px solid rgba(237,228,214,.22);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .back svg{width:18px;height:14px}
+  /* Bottom nav: My list · Map · + · Memories · Friends (Explore lives in the + sheet) */
+  .topbar .tab[data-tab="list"]{order:1}.topbar .tab[data-tab="map"]{order:2}.tab-add{order:3}
+  .topbar .tab[data-tab="memories"]{order:4}.topbar .tab[data-tab="friends"]{order:5}
+  .topbar .tab[data-tab="explore"]{display:none}
+  .topbar .tab-add{display:flex;align-items:center;justify-content:center}
+  .add-dot{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--gold);box-shadow:0 6px 20px rgba(200,169,106,.35);transition:transform .2s}
+  .tab-add:active .add-dot{transform:scale(.92)}
+  .topbar .tab-add svg{display:block;width:22px;height:22px;stroke:var(--bg);stroke-width:2}
+  .create{padding:30px 18px 18px}
   .topbar .tabs{position:fixed;left:0;right:0;bottom:0;z-index:45;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-flow:column;grid-template-rows:1fr;gap:0;background:rgba(12,11,10,.97);border-top:1px solid var(--line)}
   .topbar .tab{flex-direction:column;justify-content:center;gap:4px;font-size:10px;letter-spacing:.02em;color:var(--muted);min-width:0;white-space:nowrap}
   .topbar .tab svg{display:block}
@@ -772,7 +795,18 @@ body.wr-open{overflow:hidden}
   .map-tools{width:100%;gap:12px}
   .map-search{flex:1;width:auto;min-width:0}
   .map-frame{margin:0 -16px;border-radius:0;border-left:0;border-right:0}
-  #worldSvg{aspect-ratio:auto;height:min(60vh,520px)}
+  /* Scrolling past the map: vertical swipes scroll the page, sideways swipes pan the map.
+     Full drag + pinch lives in the full-screen map. */
+  #worldSvg{aspect-ratio:auto;height:min(48vh,420px);touch-action:pan-y}
+  .map-full-btn{display:block}
+  .map-full-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+  body.map-full{overflow:hidden}
+  body.map-full .map-frame{position:fixed;inset:0;z-index:58;margin:0;border:0;border-radius:0}
+  body.map-full #worldSvg{height:100dvh;touch-action:none}
+  body.map-full .map-full-btn{display:none}
+  body.map-full .map-zoom{bottom:calc(24px + env(safe-area-inset-bottom))}
+  body.map-full .map-legend{bottom:calc(24px + env(safe-area-inset-bottom))}
+  body.map-full .map-done{display:block;position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:14px;z-index:3;padding:10px 18px;border-radius:999px;background:var(--text);color:var(--bg);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
   .map-legend{left:10px;bottom:10px;gap:10px;font-size:9px;padding:6px 10px}
   .map-hint{display:none}
   .map-zoom{right:10px;bottom:10px}
@@ -817,6 +851,7 @@ body.wr-open{overflow:hidden}
   .idea-foot{padding:16px 20px 20px}
   .idea-foot .btn{flex:1}
   .idea-foot .spacer,#ideaClose{display:none}
+  .sheet-x,.drawer-x,#shareClose,.ob-edit-foot [data-ob="close"]{display:none}
   form{padding:30px 20px 0;gap:20px}
   form h2{font-size:28px}
   .form-actions{position:sticky;bottom:0;z-index:2;margin:6px -20px 0;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
@@ -842,6 +877,7 @@ body.wr-open{overflow:hidden}
     <button class="tab" data-tab="memories"><svg viewBox="0 0 24 24"><path d="M12 3v18M12 7l-5 2v10l5-2M12 7l5 2v10l-5-2"/><circle cx="12" cy="4" r="1"/></svg><span>Memories</span></button>
     <button class="tab" data-tab="map"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.3 3.8 5.2 3.8 8.5s-1.2 6.2-3.8 8.5c-2.6-2.3-3.8-5.2-3.8-8.5s1.2-6.2 3.8-8.5"/></svg><span>Map</span></button>
     <button class="tab" data-tab="friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.4 3-5.3 6-5.3s5.4 1.9 6 5.3"/><circle cx="16.8" cy="9.5" r="2.5"/><path d="M15.6 14.3c2.6-.2 4.8 1.4 5.4 4.4"/></svg><span>Friends</span></button>
+    <button class="tab tab-add" data-open-create aria-label="Add to your list"><span class="add-dot"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
     <button class="tab" data-tab="explore"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg><span>Explore</span></button>
   </div>
   <span class="spacer"></span>
@@ -938,7 +974,8 @@ body.wr-open{overflow:hidden}
         <span><i style="background:#3a3224;box-shadow:inset 0 0 0 1px #c8a96a"></i>On my list</span>
       </div>
       <span class="map-hint">Pinch or ⌘-scroll to zoom · drag to pan</span>
-      <div class="map-zoom"><button data-zoom="in" aria-label="Zoom in">+</button><button data-zoom="out" aria-label="Zoom out">−</button><button data-zoom="reset" aria-label="Reset">⟲</button></div>
+      <div class="map-zoom"><button data-zoom="full" class="map-full-btn" aria-label="Full screen map"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button data-zoom="in" aria-label="Zoom in">+</button><button data-zoom="out" aria-label="Zoom out">−</button><button data-zoom="reset" aria-label="Reset">⟲</button></div>
+      <button class="map-done" data-zoom="exit">Done</button>
       <div class="map-tip" id="mapTip"></div>
     </div>
     <datalist id="countryNames"></datalist>
@@ -1024,7 +1061,6 @@ body.wr-open{overflow:hidden}
   <div class="sheet-backdrop"></div>
   <div class="sheet-panel" id="sheetPanel" role="dialog" aria-modal="true" aria-label="Entry">
     <div class="grab" aria-hidden="true"></div>
-    <button class="sheet-x" aria-label="Close" onclick="dismissSheet()">×</button>
     <div class="sheet-body" id="sheetBody"></div>
   </div>
 </div>
@@ -1050,6 +1086,16 @@ body.wr-open{overflow:hidden}
     <button class="btn" id="ideaNext">Another idea</button>
     <span class="spacer"></span>
     <button class="link-quiet" id="ideaClose">Close</button>
+  </div>
+</dialog>
+
+<dialog id="createDlg" aria-label="Add to your list">
+  <div class="create">
+    <div class="eyebrow">Add to your list</div>
+    <button class="create-opt" data-create="entry"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></span><span><b>Write an entry</b><small>Something you already have in mind</small></span></button>
+    <button class="create-opt" data-create="idea"><span class="ico"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg></span><span><b>Give me an idea</b><small>One suggestion at a time, picked for you</small></span></button>
+    <button class="create-opt" data-create="browse"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></span><span><b>Browse all ideas</b><small>The whole collection, by category</small></span></button>
+    <button class="create-opt" data-create="country"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.3 3.8 5.2 3.8 8.5s-1.2 6.2-3.8 8.5c-2.6-2.3-3.8-5.2-3.8-8.5s1.2-6.2 3.8-8.5"/></svg></span><span><b>Scratch off a country</b><small>Mark somewhere you've already been</small></span></button>
   </div>
 </dialog>
 
@@ -1343,8 +1389,20 @@ $('#ideaAdd').onclick = () => {
   showIdea();
 };
 document.addEventListener('click', e => {
+  if (e.target.closest('[data-open-create]')) $('#createDlg').showModal();
   if (e.target.closest('[data-open-idea]')) openIdea();
   if (e.target.closest('[data-edit-prefs]')) openOnboarding('edit');
+});
+
+/* "+" sheet: the ways to add something */
+$('#createDlg').addEventListener('click', e => {
+  const a = e.target.closest('[data-create]')?.dataset.create;
+  if (!a) return;
+  $('#createDlg').close();
+  if (a === 'entry') openForm();
+  else if (a === 'idea') openIdea();
+  else if (a === 'browse') setView('explore');
+  else if (a === 'country') { setView('map'); toast('Tap a country to scratch it off'); }
 });
 
 /* Onboarding: swipe right on what you're into, left on what you're not.
@@ -1670,6 +1728,7 @@ function setView(v) {
   if (!routing && location.hash !== '#' + v) history.pushState({ app: true }, '', '#' + v);
   currentView = v;
   document.body.dataset.view = v;
+  if (v !== 'map' && document.body.classList.contains('map-full')) document.body.classList.remove('map-full');
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === v));
   $('#listView').hidden = v !== 'list';
   $('#exploreView').hidden = v !== 'explore';

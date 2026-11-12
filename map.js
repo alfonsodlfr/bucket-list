@@ -228,9 +228,14 @@ function initMapInteractions() {
   });
   svg.addEventListener('pointerleave', () => tip.classList.remove('on'));
 
-  document.querySelector('.map-zoom').addEventListener('click', e => {
+  document.querySelector('#mapFrame').addEventListener('click', e => {
     const z = e.target.closest('[data-zoom]')?.dataset.zoom;
     if (z === 'in') zoomAt(0.65); else if (z === 'out') zoomAt(1.55); else if (z === 'reset') resetVB();
+    else if (z === 'full' || z === 'exit') {
+      // Phones: the full-screen map is where drag + pinch work without fighting page scroll
+      document.body.classList.toggle('map-full', z === 'full');
+      requestAnimationFrame(() => { clampVB(); applyVB(); });
+    }
   });
   $('#mapSearch').addEventListener('change', e => {
     const q = e.target.value.trim().toLowerCase();
