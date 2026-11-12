@@ -2665,8 +2665,24 @@ form.addEventListener('submit', e => {
   $('#wrPillLabel').textContent = `Your ${new Date().getFullYear()}, wrapped`;
   history.replaceState({ app: false }, '', location.hash || '#list');
   // Installable + offline on the deployed (https) site; skipped on localhost so edits show immediately
-  if ('serviceWorker' in navigator && location.protocol === 'https:')
-    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      // Home-screen apps often resume instead of relaunching: look for a new version whenever it comes back
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+    }).catch(() => {}));
+    // A new version took over: reload into it, unless something is open that a reload would lose
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    const busy = () => !!document.querySelector('dialog[open]') || $('#sheet').classList.contains('open') || !$('#wrapped').hidden;
+    const reloadIntoUpdate = () => {
+      if (reloaded) return;
+      if (busy() && document.visibilityState === 'visible') {
+        return document.addEventListener('visibilitychange', reloadIntoUpdate, { once: true });
+      }
+      reloaded = true; location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reloadIntoUpdate(); });
+  }
   loadWorld().finally(() => { route(); if (!loadPrefs()) openOnboarding(); });
 </script>
 </body>

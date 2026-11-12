@@ -536,9 +536,21 @@ $('#wrapped').addEventListener('click', async e => {
 });
 // Hold to pause (like stories), arrow keys, Escape
 const stage = $('#wrStage');
-let holdTimer = null;
-stage.addEventListener('pointerdown', e => { if (e.target.closest('.wr-tap')) holdTimer = setTimeout(() => togglePause(true), 220); });
-stage.addEventListener('pointerup', e => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } });
+// Like stories: press and hold pauses, letting go resumes. A hold is not a tap, so it doesn't change slide.
+let holdTimer = null, held = false;
+stage.addEventListener('pointerdown', e => {
+  if (!e.target.closest('.wr-tap') || WR?.paused) return;
+  holdTimer = setTimeout(() => { held = true; togglePause(true); }, 220);
+});
+const release = () => {
+  clearTimeout(holdTimer); holdTimer = null;
+  if (!held) return;
+  togglePause(false);
+  setTimeout(() => { held = false; }, 0); // after the click that follows this pointerup
+};
+stage.addEventListener('pointerup', release);
+stage.addEventListener('pointercancel', release);
+stage.addEventListener('click', e => { if (held && e.target.closest('.wr-tap')) e.stopPropagation(); }, true);
 document.addEventListener('keydown', e => {
   if ($('#wrapped').hidden || document.querySelector('dialog[open]')) return;
   if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(WR.i + 1); }
