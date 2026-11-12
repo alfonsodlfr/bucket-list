@@ -404,6 +404,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .pick{flex:none;width:52px;height:64px;border-radius:6px;background-size:cover;background-position:center;opacity:.55;outline:1px solid var(--line);outline-offset:0;transition:opacity .25s,outline-color .25s,transform .2s}
 .pick:hover{opacity:.85}
 .pick.on{opacity:1;outline:2px solid var(--gold);outline-offset:2px}
+.pick-add{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;opacity:1;outline:0;border:1px dashed var(--line-strong);font-size:11px;letter-spacing:.04em;color:var(--muted);cursor:pointer;transition:border-color .25s,color .25s}
+.pick-add span{font-size:18px;line-height:1;font-weight:300}
+.pick-add:hover,.pick-add:focus-within{border-color:var(--gold);color:var(--text)}
+.pick-add input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.pick-add.busy{animation:breathe 1.2s ease-in-out infinite;pointer-events:none}
 .photo-pick + .frame-ctl{margin-top:0}
 .frame-ctl{margin:-8px 0 26px;padding:16px 18px;border:1px solid var(--line);border-radius:8px}
 .frame-ctl[hidden]{display:none}
@@ -416,6 +421,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .share-side p{color:var(--muted);line-height:1.7;font-size:14px;margin:0 0 24px}
 .share-side .opts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:28px}
 .share-side .opts[hidden]{display:none}
+.share-side .opts:focus{outline:none}
 .chip:disabled{opacity:.35;cursor:not-allowed}
 .share-side .btns{display:flex;gap:10px;flex-wrap:wrap}
 @media (max-width:700px){.share-wrap{grid-template-columns:1fr;justify-items:center;padding:28px}.share-preview{width:220px}}
@@ -2460,15 +2466,41 @@ function openShareWith({ title, desc, filename, compose }) {
   shareDlg.showModal();
   renderShare();
 }
+const MAX_MEMORY_PHOTOS = 8; // same limit as the memory form
+// Picker order: the cover, then the memory photos (newest last, next to "+ Add"), then the highlights
+const pickerPhotos = it => [...new Set([it.image, ...(it.memory?.photos || []), ...(it.highlights || []).map(h => h.src)].filter(Boolean))];
 function renderPhotoPick(it) {
-  const all = sharePhotos(it), cur = storySources(it, 1)[0];
-  $('#photoPick').hidden = all.length < 2;
-  $('#pickRow').innerHTML = all.map((src, n) => `<button class="pick ${src === cur ? 'on' : ''}" data-pick="${n}" aria-label="Use photo ${n + 1}" aria-pressed="${src === cur}" style="background-image:${cssUrl(src)}"></button>`).join('');
+  const all = pickerPhotos(it), cur = storySources(it, 1)[0];
+  const canAdd = (it.memory?.photos?.length || 0) < MAX_MEMORY_PHOTOS;
+  $('#photoPick').hidden = false;
+  $('#pickRow').innerHTML = all.map((src, n) => `<button class="pick ${src === cur ? 'on' : ''}" data-pick="${n}" aria-label="Use photo ${n + 1}" aria-pressed="${src === cur}" style="background-image:${cssUrl(src)}"></button>`).join('') +
+    (canAdd ? `<label class="pick pick-add" aria-label="Add a photo"><span>+</span>Add<input type="file" accept="image/*" id="pickFile"></label>` : '');
+  $('#pickFile')?.addEventListener('change', e => addSharePhoto(it, e.target.files[0]));
+}
+// A photo added while sharing joins the memory's photos (after the cover) and leads the story
+async function addSharePhoto(it, file) {
+  if (!file) return;
+  const add = $('.pick-add'); add?.classList.add('busy');
+  const src = await compressImage(file, 1100, 0.78);
+  const before = { memory: it.memory, sharePhoto: it.sharePhoto, shareFrame: it.shareFrame };
+  it.memory = { ...(it.memory || {}), photos: [...(it.memory?.photos || []), src] };
+  it.sharePhoto = src;
+  delete it.shareFrame;
+  try { save(); }
+  catch {
+    Object.assign(it, before); if (!before.shareFrame) delete it.shareFrame;
+    toast('Storage is full: try a smaller photo');
+    return renderPhotoPick(it);
+  }
+  Object.assign(shareFrame, FRAME0); $('#frameZoom').value = 1;
+  setFraming(true);
+  renderPhotoPick(it); renderShare();
+  $('#pickRow').scrollTo({ left: 1e6, behavior: 'smooth' });
 }
 $('#pickRow').addEventListener('click', e => {
   const b = e.target.closest('[data-pick]'), it = shareCtx?.item;
   if (!b || !it) return;
-  const src = sharePhotos(it)[+b.dataset.pick];
+  const src = pickerPhotos(it)[+b.dataset.pick];
   if (src === storySources(it, 1)[0]) return;
   it.sharePhoto = src;
   // framing belongs to a photo: a new photo starts centred
