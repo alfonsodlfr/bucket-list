@@ -397,6 +397,14 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .share-preview.can-frame{cursor:grab;touch-action:none;user-select:none}
 .share-preview.can-frame.dragging{cursor:grabbing}
 .share-preview canvas{animation:none}
+.photo-pick{margin:-8px 0 18px}
+.photo-pick .eyebrow{display:block;margin-bottom:10px}
+.pick-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:3px 3px 4px}
+.pick-row::-webkit-scrollbar{display:none}
+.pick{flex:none;width:52px;height:64px;border-radius:6px;background-size:cover;background-position:center;opacity:.55;outline:1px solid var(--line);outline-offset:0;transition:opacity .25s,outline-color .25s,transform .2s}
+.pick:hover{opacity:.85}
+.pick.on{opacity:1;outline:2px solid var(--gold);outline-offset:2px}
+.photo-pick + .frame-ctl{margin-top:0}
 .frame-ctl{margin:-8px 0 26px;padding:16px 18px;border:1px solid var(--line);border-radius:8px}
 .frame-ctl[hidden]{display:none}
 .frame-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -1156,6 +1164,10 @@ body.wr-open{overflow:hidden}
         <button class="chip" data-share-style="ticket">Ticket</button>
       </div>
       <p class="hint-line" id="shareHint" hidden style="margin:-16px 0 24px">Add a one-line highlight or a story to this memory to include a note.</p>
+      <div class="photo-pick" id="photoPick" hidden>
+        <span class="eyebrow">Photo</span>
+        <div class="pick-row" id="pickRow"></div>
+      </div>
       <div class="frame-ctl" id="frameCtl" hidden>
         <div class="frame-head"><span class="eyebrow">Framing</span><button class="link-quiet" id="frameReset">Reset</button></div>
         <label class="frame-row"><span aria-hidden="true">−</span><input type="range" id="frameZoom" min="1" max="3" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></label>
@@ -2057,13 +2069,20 @@ function noteText(it) {
   const first = (m.story || '').trim().split(/(?<=[.!?])\s+|\n/)[0] || '';
   return first.length > 140 ? first.slice(0, 137).replace(/\s+\S*$/, '') + '…' : first;
 }
+/* Photos a story can use: memory photos, the cover, then the "Don't miss" highlights.
+   The one picked in the share dialog (it.sharePhoto) leads; layouts use the first 1–3. */
+const sharePhotos = it => [...new Set([...(it.memory?.photos || []), it.image, ...(it.highlights || []).map(h => h.src)].filter(Boolean))];
+function storySources(it, max = 3) {
+  const all = sharePhotos(it);
+  const pick = all.includes(it.sharePhoto) ? it.sharePhoto : null;
+  return (pick ? [pick, ...all.filter(s => s !== pick)] : all).slice(0, max);
+}
 /* Extra shareable layouts. Each returns a 1080×1920 canvas. */
 const SHARE_LAYOUTS = { polaroid: composePolaroid, cover: composeCover, ticket: composeTicket };
 async function storyAssets(it) {
   await Promise.all(['200', '300', '400', '500'].map(w => document.fonts.load(`${w} 40px Inter`)));
   const m = it.memory || {};
-  const srcs = [...new Set([...(m.photos || []), it.image, ...(it.highlights || []).map(h => h.src)].filter(Boolean))].slice(0, 3);
-  const imgs = (await Promise.all(srcs.map(loadImg))).filter(Boolean);
+  const imgs = (await Promise.all(storySources(it).map(loadImg))).filter(Boolean);
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   return { imgs, cv, ctx: cv.getContext('2d'), t: TYPES[it.type] || TYPES.other, d: memDate(it) };
@@ -2074,22 +2093,28 @@ function toneFill(ctx, t, x, y, w, h) {
   g.addColorStop(0, t.tone[0]); g.addColorStop(1, t.tone[1]);
   ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
 }
+// The main photo, blurred and dimmed behind the whole story; returns it as its own canvas
+function fadedBackdrop(ctx, img, t) {
+  const bgc = document.createElement('canvas'); bgc.width = W; bgc.height = H;
+  const bctx = bgc.getContext('2d');
+  bctx.fillStyle = C.bg; bctx.fillRect(0, 0, W, H);
+  if (img) { bctx.filter = 'blur(50px) brightness(.45)'; drawCover(bctx, img, -100, -100, W + 200, H + 200); }
+  else toneFill(bctx, t, 0, 0, W, H);
+  ctx.drawImage(bgc, 0, 0);
+  return bgc;
+}
 function photoOrTone(ctx, img, t, x, y, w, h, f) { img ? drawCover(ctx, img, x, y, w, h, f) : toneFill(ctx, t, x, y, w, h); }
 
-// Polaroid: one big instant print on warm paper, caption written under the photo
+// Polaroid: one big instant print over the photo itself, blurred and dimmed; caption written under the photo
 async function composePolaroid(it) {
   const { imgs, ctx, cv, t, d } = await storyAssets(it);
-  const paper = ctx.createLinearGradient(0, 0, W, H);
-  paper.addColorStop(0, '#efe7d8'); paper.addColorStop(1, '#ddd2bf');
-  ctx.fillStyle = paper; ctx.fillRect(0, 0, W, H);
-  // faint paper grain
-  for (let n = 0; n < 2600; n++) { ctx.fillStyle = `rgba(80,60,30,${Math.random() * .05})`; ctx.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+  fadedBackdrop(ctx, imgs[0], t);
 
   const print = (img, cx, cy, deg, pw, ph, caption) => {
     const fw = pw + 70, fh = ph + (caption ? 300 : 110);
     ctx.save();
     ctx.translate(cx, cy); ctx.rotate(deg * Math.PI / 180);
-    ctx.shadowColor = 'rgba(40,28,10,.35)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 22;
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 60; ctx.shadowOffsetY = 26;
     ctx.fillStyle = '#fbf8f2'; ctx.fillRect(-fw / 2, -fh / 2, fw, fh);
     ctx.shadowColor = 'transparent';
     photoOrTone(ctx, img, t, -pw / 2, -fh / 2 + 35, pw, ph, caption ? shareFrame : null);
@@ -2110,14 +2135,14 @@ async function composePolaroid(it) {
   print(imgs[0], W / 2, cy, -2, 780, 780, true);
 
   const note = noteText(it);
-  ctx.fillStyle = '#4a4035';
+  ctx.fillStyle = 'rgba(237,228,214,.88)';
   if (note) {
     const q = fitText(ctx, `“${note}”`, W - 240, 2, 38, 30, 300);
     ctx.font = `300 ${q.size}px Inter`;
     q.lines.forEach((l, n) => { ctx.textAlign = 'center'; ctx.fillText(l, W / 2, cy + 590 + n * q.size * 1.35); });
     ctx.textAlign = 'left';
   }
-  ctx.font = '500 24px Inter'; ctx.fillStyle = '#9c7f45';
+  ctx.font = '500 24px Inter'; ctx.fillStyle = C.gold;
   tracked(ctx, '✓  OFF MY LIST  ·  THE LIST', W / 2, cy + 750, 6, 'center');
   return cv;
 }
@@ -2166,12 +2191,7 @@ async function composeCover(it) {
 // Ticket: a boarding pass, from "The List" to wherever it happened
 async function composeTicket(it) {
   const { imgs, ctx, cv, t, d } = await storyAssets(it);
-  const bgc = document.createElement('canvas'); bgc.width = W; bgc.height = H;
-  const bctx = bgc.getContext('2d');
-  bctx.fillStyle = C.bg; bctx.fillRect(0, 0, W, H);
-  if (imgs[0]) { bctx.filter = 'blur(50px) brightness(.45)'; drawCover(bctx, imgs[0], -100, -100, W + 200, H + 200); }
-  else toneFill(bctx, t, 0, 0, W, H);
-  ctx.drawImage(bgc, 0, 0);
+  const bgc = fadedBackdrop(ctx, imgs[0], t);
 
   const x = 110, y = 230, w = W - 220, h = 1400, r = 40, split = y + 760;
   const paper = '#f3ece0';
@@ -2227,7 +2247,7 @@ async function composeStory(it, style) {
   if (SHARE_LAYOUTS[style]) return SHARE_LAYOUTS[style](it);
   await Promise.all(['400', '500'].map(w => document.fonts.load(`${w} 40px Inter`)));
   const m = it.memory || {};
-  const srcs = [...new Set([...(m.photos || []), it.image].filter(Boolean))].slice(0, 3);
+  const srcs = storySources(it);
   const imgs = (await Promise.all(srcs.map(loadImg))).filter(Boolean);
 
   const cv = document.createElement('canvas');
@@ -2397,6 +2417,7 @@ function persistFrame() {
 function openShareWith({ title, desc, filename, compose }) {
   shareCtx = { title, filename, compose };
   shareFrame = null; setFraming(false);
+  $('#photoPick').hidden = true;
   $('#sharePreview').innerHTML = '';
   $('#shareOpts').hidden = true;
   $('#shareHint').hidden = true;
@@ -2405,9 +2426,25 @@ function openShareWith({ title, desc, filename, compose }) {
   shareDlg.showModal();
   renderShare();
 }
+function renderPhotoPick(it) {
+  const all = sharePhotos(it), cur = storySources(it, 1)[0];
+  $('#photoPick').hidden = all.length < 2;
+  $('#pickRow').innerHTML = all.map((src, n) => `<button class="pick ${src === cur ? 'on' : ''}" data-pick="${n}" aria-label="Use photo ${n + 1}" aria-pressed="${src === cur}" style="background-image:${cssUrl(src)}"></button>`).join('');
+}
+$('#pickRow').addEventListener('click', e => {
+  const b = e.target.closest('[data-pick]'), it = shareCtx?.item;
+  if (!b || !it) return;
+  const src = sharePhotos(it)[+b.dataset.pick];
+  if (src === storySources(it, 1)[0]) return;
+  it.sharePhoto = src;
+  // framing belongs to a photo: a new photo starts centred
+  delete it.shareFrame; Object.assign(shareFrame, FRAME0); $('#frameZoom').value = 1;
+  save(); renderPhotoPick(it); renderShare();
+});
 function openShare(it) {
   shareCtx = { item: it, title: it.title, filename: `the-list-${it.title}`, compose: style => composeStory(it, style) };
   shareFrame = { ...FRAME0, ...(it.shareFrame || {}) };
+  renderPhotoPick(it);
   setFraming(!!(entryCover(it) || it.memory?.photos?.length));
   $('#sharePreview').innerHTML = '';
   $('#shareOpts').hidden = false;
