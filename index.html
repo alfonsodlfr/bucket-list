@@ -1116,17 +1116,9 @@ body.wr-open{overflow:hidden}
     <label class="full">Description<textarea name="description" maxlength="600" placeholder="Why it matters"></textarea></label>
     <label>Type<select name="type" id="typeSelect"></select></label>
     <label>Place<input name="place" placeholder="Tromsø, Norway"></label>
-    <label class="full">Coordinates
-      <div class="row">
-        <input name="lat" type="number" step="any" placeholder="Latitude">
-        <input name="lng" type="number" step="any" placeholder="Longitude">
-        <button type="button" class="link" id="locate">Use my location</button>
-      </div>
-    </label>
     <label class="full">Cover image <span class="hint-line">Optional. If empty, the first highlight is used.</span>
       <div class="drop" id="drop"><span id="dropText">Choose a photograph</span><input type="file" accept="image/*" id="file"></div>
     </label>
-    <label class="full">Or image URL<input name="image" type="url" placeholder="https://"></label>
     <div class="full field">Highlights to see <span class="hint-line">A photo and a headline for each place or thing you don't want to miss.</span>
       <div class="hl-list" id="hlList"></div>
     </div>
@@ -2727,8 +2719,6 @@ function openForm(it) {
     form.description.value = it.description || '';
     form.type.value = it.type;
     form.place.value = it.place || '';
-    form.lat.value = it.lat ?? '';
-    form.lng.value = it.lng ?? '';
   }
   $('#dlgTitle').textContent = it ? 'Edit entry' : 'New entry';
   $('#saveBtn').textContent = it ? 'Save changes' : 'Add to list';
@@ -2754,8 +2744,7 @@ function compressImage(file, max = 1400, q = 0.82) {
     r.onerror = reject; r.readAsDataURL(file);
   });
 }
-$('#file').onchange = async e => { const f = e.target.files[0]; if (f) { setImage(await compressImage(f)); form.image.value = ''; pendingCredit = null; hideSuggest(); } };
-form.image.addEventListener('input', () => { if (form.image.value) { setImage(null); pendingCredit = null; hideSuggest(); } });
+$('#file').onchange = async e => { const f = e.target.files[0]; if (f) { setImage(await compressImage(f)); pendingCredit = null; hideSuggest(); } };
 
 /* Suggested cover photo, from the title (and place).
    First a matching built-in photo, then free photos from Wikimedia Commons, credited. */
@@ -2805,7 +2794,7 @@ function showSuggestion() {
   $('#suggest').hidden = false;
 }
 async function maybeSuggest() {
-  if (sgDismissed || pendingImage || form.image.value.trim()) return hideSuggest();
+  if (sgDismissed || pendingImage) return hideSuggest();
   const title = form.title.value.trim(), place = form.place.value.trim();
   const q = keywords(title).join(' ') + '|' + place;
   if (keywords(title).length === 0) return hideSuggest();
@@ -2820,15 +2809,9 @@ const suggestSoon = () => { clearTimeout(sgTimer); sgTimer = setTimeout(maybeSug
 form.title.addEventListener('input', suggestSoon);
 form.place.addEventListener('change', suggestSoon);
 $('#sgNext').onclick = () => { sgIndex = (sgIndex + 1) % sgList.length; showSuggestion(); };
-$('#sgUse').onclick = () => { const x = sgList[sgIndex]; if (!x) return; setImage(x.src); pendingCredit = x.credit; form.image.value = ''; hideSuggest(); };
+$('#sgUse').onclick = () => { const x = sgList[sgIndex]; if (!x) return; setImage(x.src); pendingCredit = x.credit; hideSuggest(); };
 $('#sgNo').onclick = () => { sgDismissed = true; hideSuggest(); };
 
-$('#locate').onclick = () => {
-  if (!navigator.geolocation) return alert('Geolocation is not available.');
-  navigator.geolocation.getCurrentPosition(
-    p => { form.lat.value = p.coords.latitude.toFixed(5); form.lng.value = p.coords.longitude.toFixed(5); },
-    () => alert('Could not get your location.'));
-};
 
 /* Highlights editor */
 let pendingHighlights = [];
@@ -2904,11 +2887,12 @@ form.addEventListener('submit', e => {
   const fd = new FormData(form);
   const title = fd.get('title').trim();
   if (!title) return;
-  const lat = parseFloat(fd.get('lat')), lng = parseFloat(fd.get('lng'));
+  // Coordinates aren't asked for any more: the map finds the country from Place. Edits keep any saved ones.
+  const prev = editingId ? items.find(i => i.id === editingId) : null;
   const fields = {
     title, description: fd.get('description').trim(), type: fd.get('type'), place: fd.get('place').trim(),
-    lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng,
-    image: pendingImage || fd.get('image').trim() || null,
+    lat: prev?.lat ?? null, lng: prev?.lng ?? null,
+    image: pendingImage || null,
     imageCredit: pendingImage && !pendingImage.startsWith('data:') ? pendingCredit : null, // own photos need no credit
     highlights: pendingHighlights.map(h => ({ ...h, caption: h.caption.trim() })),
   };
