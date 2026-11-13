@@ -76,9 +76,37 @@ function computeEntryCountries() {
 const listCountries = () => new Set(items.filter(i => !i.done && entryCountries.has(i.id)).map(i => entryCountries.get(i.id)));
 const entriesIn = id => items.filter(i => entryCountries.get(i.id) === id);
 // Completed entries the user linked to a visited country (skipping any that were since deleted)
-const linkedEntries = id => (visits[id]?.entries || []).map(eid => items.find(i => i.id === eid)).filter(Boolean);
+const linkedEntries = id => [...new Set([...(visits[id]?.entries || []).map(eid => items.find(i => i.id === eid)), ...items.filter(i => i.done && entryCountries.get(i.id) === id)])].filter(Boolean);
 // The visit's own photo, else the cover of its first linked story
 const visitPhotoOf = id => visits[id]?.photo || linkedEntries(id).map(coverOf).find(Boolean) || null;
+
+/* ---------- Completed entries scratch their country off ---------- */
+const ymOf = it => { const d = memDate(it); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+// Call whenever an entry is completed, reopened, edited or removed. Returns the id of a newly scratched country.
+// Countries scratched this way (auto) are unscratched again when their last linked entry goes; ones you scratched yourself stay.
+function syncVisitFor(it) {
+  if (!WORLD) return null;
+  const cid = it.done && items.includes(it) ? countryForEntry(it) : null;
+  let changed = false, scratched = null;
+  for (const [id, v] of Object.entries(visits)) {
+    if (id === cid || !(v.entries || []).includes(it.id)) continue;
+    v.entries = v.entries.filter(e => e !== it.id); changed = true;
+    if (v.auto && !v.entries.length) delete visits[id];
+  }
+  if (cid) {
+    const v = visits[cid];
+    if (!v) { visits[cid] = { date: ymOf(it), comment: '', photo: null, entries: [it.id], at: Date.now(), auto: true }; scratched = cid; changed = true; }
+    else if (!(v.entries || []).includes(it.id)) { v.entries = [...(v.entries || []), it.id]; changed = true; }
+  }
+  if (changed) saveVisits();
+  return scratched;
+}
+// Entries completed before this existed: link them once
+function backfillVisits() {
+  if (localStorage.getItem('bucketlist.visitsBackfill')) return;
+  items.filter(i => i.done).forEach(syncVisitFor);
+  localStorage.setItem('bucketlist.visitsBackfill', '1');
+}
 
 /* ---------- Map rendering ---------- */
 let mapBuilt = false;
@@ -268,7 +296,7 @@ function renderDrawer() {
   const v = visits[c.id];
   const entries = entriesIn(c.id);
   const linkedIds = new Set(v?.entries || []);
-  const open = entries.filter(i => !i.done), done = entries.filter(i => i.done && !linkedIds.has(i.id));
+  const open = entries.filter(i => !i.done), done = v ? [] : entries.filter(i => i.done && !linkedIds.has(i.id)); // visited: completed ones are under "Completed here"
 
   let main;
   if (scratchState === 'scratching') {

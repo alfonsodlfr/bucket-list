@@ -120,6 +120,17 @@ body.in-detail #detailView{display:block;animation:fade .5s var(--ease)}
 .card .img{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;transform:scale(1.02);transition:transform 1.6s var(--ease),filter .8s var(--ease)}
 .card:hover .img{transform:scale(1.08)}
 .card::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to top,rgba(8,7,6,.92) 0%,rgba(8,7,6,.55) 30%,rgba(8,7,6,0) 58%),linear-gradient(to bottom,rgba(8,7,6,.45),rgba(8,7,6,0) 22%)}
+.done-now{display:grid;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:12px}
+.switch{display:flex;align-items:center;gap:14px;cursor:pointer;letter-spacing:0;text-transform:none;font-size:14px;color:var(--text)}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.switch .track{flex:none;position:relative;width:46px;height:28px;border-radius:999px;background:rgba(237,228,214,.16);transition:background .25s}
+.switch .track::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .25s var(--ease)}
+.switch input:checked + .track{background:var(--gold)}
+.switch input:checked + .track::after{transform:translateX(18px)}
+.switch input:focus-visible + .track{outline:2px solid var(--gold);outline-offset:2px}
+.sw-text{display:grid;gap:2px}
+.sw-text b{font-weight:400}
+.sw-text small{font-size:12px;color:var(--muted)}
 .suggest{position:relative;display:flex;gap:14px;align-items:center;padding:10px;border:1px solid rgba(200,169,106,.35);border-radius:10px;background:rgba(200,169,106,.05);animation:in .4s var(--ease)}
 .sg-img{flex:none;width:84px;height:104px;border-radius:6px;background:var(--surface) center/cover}
 .sg-text{min-width:0;display:grid;gap:4px;font-size:13px;color:var(--text);letter-spacing:0;text-transform:none}
@@ -1116,6 +1127,10 @@ body.wr-open{overflow:hidden}
     <label class="full">Description<textarea name="description" maxlength="600" placeholder="Why it matters"></textarea></label>
     <label>Type<select name="type" id="typeSelect"></select></label>
     <label>Place<input name="place" placeholder="Tromsø, Norway"></label>
+    <div class="full done-now" id="doneNow">
+      <label class="switch"><input type="checkbox" name="completed" id="doneToggle"><span class="track"></span><span class="sw-text"><b>I've already done this</b><small>Saves it as completed, with your photos as its story</small></span></label>
+      <label class="done-when" id="doneWhen" hidden>When<input type="date" name="doneDate"></label>
+    </div>
     <label class="full">Cover image <span class="hint-line">Optional. If empty, the first highlight is used.</span>
       <div class="drop" id="drop"><span id="dropText">Choose a photograph</span><input type="file" accept="image/*" id="file"></div>
     </label>
@@ -1939,7 +1954,7 @@ function refresh() {
 
 /* ---------- Memories ---------- */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const hasStory = i => !!(i.memory && (i.memory.story || i.memory.highlight || i.memory.photos?.length));
+const hasStory = i => !!(i.memory && (i.memory.story || i.memory.highlight || i.memory.photos?.length || coverOf(i)));
 const memDate = i => i.memory?.date ? new Date(i.memory.date + 'T12:00:00') : new Date(i.doneAt || i.createdAt);
 const entryCover = i => i.image || i.highlights?.[0]?.src || null;
 const coverOf = i => i.memory?.photos?.[0] || entryCover(i);
@@ -2056,7 +2071,7 @@ function openStory(it) {
   const t = TYPES[it.type] || TYPES.other;
   const cover = coverOf(it);
   const paras = (m.story || '').split(/\n\s*\n|\n/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
-  const gallery = [...new Set([...(m.photos || []), ...(it.image && !(m.photos || []).includes(it.image) ? [it.image] : [])])];
+  const gallery = [...new Set([...(m.photos || []), it.image, ...(it.highlights || []).map(h => h.src)].filter(Boolean))];
   $('#storyContent').innerHTML = `
     <header class="story-hero" style="background-image:${cover ? cssUrl(cover) + ',' : ''}${toneBg(t)}">
       <div class="inner">
@@ -2682,6 +2697,8 @@ document.addEventListener('click', e => {
     it.done = !it.done; it.doneAt = it.done ? Date.now() : null;
     save();
     it.done ? onEntryCompleted(it) : onEntryReopened(it);
+    const scratched = syncVisitFor(it);
+    if (scratched) toast(`${WORLD.byId[scratched].name} scratched off your map`);
     if (!it.done && detail?.kind === 'story') { exitDetail(); return; } // reopened: leave the story page
     refresh();
     if (it.done) openMemory(it);
@@ -2694,7 +2711,7 @@ document.addEventListener('click', e => {
   } else if (el.dataset.act === 'edit') {
     openForm(it);
   } else if (el.dataset.act === 'delete' && confirm(`Remove "${it.title}"?`)) {
-    items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); refresh();
+    items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it); refresh();
   }
 });
 
@@ -2714,6 +2731,10 @@ function openForm(it) {
   setImage(it?.image || null);
   pendingCredit = it?.imageCredit || null;
   resetSuggest();
+  $('#doneNow').hidden = !!it;
+  $('#doneWhen').hidden = true;
+  form.doneDate.value = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  form.doneDate.max = form.doneDate.value;
   if (it) {
     form.title.value = it.title;
     form.description.value = it.description || '';
@@ -2898,16 +2919,30 @@ form.addEventListener('submit', e => {
   };
   const backup = JSON.stringify(items);
   if (editingId) Object.assign(items.find(i => i.id === editingId), fields);
-  else items.push(makeItem(fields));
-  try { save(); } catch { items = JSON.parse(backup); return alert('Storage is full. Try a smaller photo or an image URL.'); }
+  else {
+    const it = makeItem(fields);
+    // Already done: save it straight away as completed; its photos (cover + highlights) become the story
+    if (fd.get('completed')) {
+      const date = fd.get('doneDate') || new Date().toISOString().slice(0, 10);
+      it.done = true;
+      it.doneAt = Math.min(Date.now(), new Date(date + 'T12:00:00').getTime());
+      it.memory = { date, with: '', highlight: '', story: '', photos: [] };
+    }
+    items.push(it);
+  }
+  try { save(); } catch { items = JSON.parse(backup); return alert('Storage is full. Try a smaller photo.'); }
   const wasEdit = !!editingId;
+  const saved = wasEdit ? items.find(i => i.id === editingId) : items.at(-1);
+  // Completed entries scratch their country off the map (and move with it if the place changed)
+  const scratched = typeof syncVisitFor === 'function' ? syncVisitFor(saved) : null;
+  if (!wasEdit && saved.done) onEntryCompleted(saved);
   dlg.close();
   if (wasEdit) refresh();
   else {
     // A new entry must be visible: clear any filter that would hide it, then point at it
     const it = items.at(-1);
     if (filter.type !== 'all' && filter.type !== it.type) filter.type = 'all';
-    if (filter.status === 'done') filter.status = 'all';
+    if (filter.status === (it.done ? 'open' : 'done')) filter.status = 'all';
     setView('list');
     requestAnimationFrame(() => {
       const card = document.querySelector(`.card[data-id="${it.id}"]`);
@@ -2917,7 +2952,12 @@ form.addEventListener('submit', e => {
       setTimeout(() => card.classList.remove('just-added'), 2400);
     });
   }
-  toast(wasEdit ? 'Saved' : 'Added to your list');
+  toast(scratched ? `${saved.done && !wasEdit ? 'Completed' : 'Saved'} · ${WORLD.byId[scratched].name} scratched off your map`
+    : wasEdit ? 'Saved' : saved.done ? 'Added as completed' : 'Added to your list');
+});
+form.completed.addEventListener('change', () => {
+  $('#doneWhen').hidden = !form.completed.checked;
+  $('#saveBtn').textContent = form.completed.checked ? 'Add as completed' : 'Add to list';
 });
 
 </script>
@@ -2951,7 +2991,7 @@ form.addEventListener('submit', e => {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reloadIntoUpdate(); });
   }
   // An invite link takes priority over the first-run interests swipe
-  loadWorld().finally(() => { route(); if (pendingJoin) { setView('friends'); openJoin(pendingJoin); pendingJoin = null; } else if (!loadPrefs()) openOnboarding(); });
+  loadWorld().then(backfillVisits).finally(() => { route(); if (pendingJoin) { setView('friends'); openJoin(pendingJoin); pendingJoin = null; } else if (!loadPrefs()) openOnboarding(); });
 </script>
 </body>
 </html>
