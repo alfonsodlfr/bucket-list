@@ -146,6 +146,7 @@ async function renderMap() {
   document.querySelectorAll('[data-mapfilter]').forEach(b => b.classList.toggle('active', b.dataset.mapfilter === mapFilter));
   renderMapStrip(visitedIds, onList);
   if (drawerId) renderDrawer();
+  if (typeof checkStamps === 'function') checkStamps();
 }
 
 function renderMapStrip(visitedIds, onList) {

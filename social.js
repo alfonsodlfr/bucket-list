@@ -25,7 +25,7 @@ const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 let ME = null;        // your user id once signed in
 let socialReady = false;
-const emptyS = () => ({ profiles: [], challenges: [], members: [], items: [], completions: [], votes: [], activities: [], reactions: [] });
+const emptyS = () => ({ profiles: [], challenges: [], members: [], items: [], completions: [], votes: [], activities: [], reactions: [], wishes: [] });
 let S = emptyS();
 
 /* ---------- Events ---------- */
@@ -36,7 +36,8 @@ const emit = (type, detail) => bus.dispatchEvent(new CustomEvent(type, { detail 
 const ms = v => (v ? Date.parse(v) : null);
 const iso = t => new Date(t).toISOString();
 const MAP = {
-  profiles: r => ({ id: r.id, name: r.name, color: r.color }),
+  profiles: r => ({ id: r.id, name: r.name, color: r.color, shareList: r.share_list }),
+  wishes: r => ({ userId: r.user_id, entryId: r.entry_id, title: r.title, type: r.type, place: r.place, sourceActivity: r.source_activity }),
   challenges: r => ({ id: r.id, title: r.title, startsAt: ms(r.starts_at), endsAt: ms(r.ends_at), createdBy: r.created_by, inviteCode: r.invite_code }),
   members: r => ({ challengeId: r.challenge_id, userId: r.user_id }),
   items: r => ({ id: r.id, challengeId: r.challenge_id, title: r.title, difficulty: r.difficulty }),
@@ -45,7 +46,7 @@ const MAP = {
   activities: r => ({ id: r.id, actorId: r.actor_id, kind: r.kind, title: r.title, photo: r.photo, place: r.place || '', type: r.type, caption: r.caption || '', entryId: r.entry_id, challengeId: r.challenge_id, completionId: r.completion_id, points: r.points, createdAt: ms(r.created_at) }),
   reactions: r => ({ activityId: r.activity_id, userId: r.user_id, emoji: r.emoji, createdAt: ms(r.created_at) }),
 };
-const TABLE = { profiles: 'profiles', challenges: 'challenges', members: 'challenge_members', items: 'challenge_items', completions: 'challenge_completions', votes: 'completion_votes', activities: 'activities', reactions: 'reactions' };
+const TABLE = { profiles: 'profiles', challenges: 'challenges', members: 'challenge_members', items: 'challenge_items', completions: 'challenge_completions', votes: 'completion_votes', activities: 'activities', reactions: 'reactions', wishes: 'wishes' };
 function friendlyError(e) {
   const m = e?.message || String(e);
   if (e?.code === '23505' && /hash/.test(m)) return 'This photo has already been used as proof.';
@@ -72,7 +73,8 @@ async function sync() {
     announceNews(before);
     emit('challenges', {}); emit('feed', { kind: 'sync' }); emit('completion', {});
     S.challenges.forEach(c => emit('completion:' + c.id, {}));
-    if (firstSync) { firstSync = false; if (/^#challenge\//.test(location.hash) && typeof route === 'function') route(); }
+    if (firstSync) { firstSync = false; syncWishesSoon(); if (/^#challenge\//.test(location.hash) && typeof route === 'function') route(); }
+    if (typeof refresh === 'function' && currentView === 'list' && !detail) render(); // friends' goals and challenge banners on My list
   })().catch(e => console.warn('sync failed', e)).finally(() => { syncing = null; if (syncAgain) { syncAgain = false; sync(); } });
   return syncing;
 }
@@ -128,11 +130,11 @@ function requireProfile(why) {
   profileDlg.showModal();
   return new Promise((resolve, reject) => { profileWait = { resolve, reject }; });
 }
-async function createProfile(name) {
+async function createProfile(name, shareList = true) {
   let { data: { session } } = await sb.auth.getSession();
   if (!session) session = must(await sb.auth.signInAnonymously()).session;
   const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-  must(await sb.from('profiles').upsert({ id: session.user.id, name, color }));
+  must(await sb.from('profiles').upsert({ id: session.user.id, name, color, share_list: shareList }));
   ME = session.user.id;
   renderSocialChrome();
   listen();
@@ -144,7 +146,7 @@ $('#profileForm').addEventListener('submit', async e => {
   if (!name) return;
   const btn = $('#profileGo'); btn.disabled = true; btn.textContent = 'One moment…';
   try {
-    await createProfile(name);
+    await createProfile(name, $('#profileShare').checked);
     const w = profileWait; profileWait = null;
     profileDlg.close();
     toast(`Welcome, ${name.split(' ')[0]}`);
@@ -368,6 +370,112 @@ const api = {
   },
 };
 
+/* ---------- Goal titles shared with friends ----------
+   Your open goals are mirrored as titles only (no photos, no stories), visible to people
+   you share a challenge with, unless you switch it off. Used for "Me too" and "friends with the same goal". */
+const goalKey = t => [...new Set(keywords(t || ''))];
+function sameGoal(a, b) {
+  const x = goalKey(a), y = goalKey(b);
+  if (!x.length || !y.length) return a.trim().toLowerCase() === b.trim().toLowerCase();
+  const shared = x.filter(w => y.includes(w)).length;
+  return shared >= Math.min(2, x.length, y.length) && shared / Math.min(x.length, y.length) >= .6;
+}
+const haveGoal = title => items.some(i => sameGoal(i.title, title));
+// Friends (not you) who have this goal on their list, optionally leaving someone out
+const friendsWanting = (title, skip) => [...new Set(S.wishes.filter(w => w.userId !== ME && w.userId !== skip && sameGoal(w.title, title)).map(w => w.userId))];
+const names = ids => ids.map(firstName).reduce((s, n, k, a) => k === 0 ? n : k === a.length - 1 ? `${s} and ${n}` : `${s}, ${n}`, '');
+function alsoLine(a) {
+  const ids = friendsWanting(a.title, a.actorId);
+  return ids.length ? `<div class="also-line"><span class="stack">${ids.slice(0, 3).map(u => avatar(u, 16)).join('')}</span>${esc(names(ids.slice(0, 2)))}${ids.length > 2 ? ` +${ids.length - 2}` : ''} ${ids.length === 1 ? 'has' : 'have'} it on their list too</div>` : '';
+}
+function sameGoalPill(i) {
+  const ids = friendsWanting(i.title);
+  if (!ids.length) return '';
+  return `<span class="card-pill"><span class="stack">${ids.slice(0, 2).map(u => avatar(u, 14)).join('')}</span>${ids.length === 1 ? `${esc(firstName(ids[0]))} too` : `+${ids.length} want this`}</span>`;
+}
+function sameGoalHtml(it) {
+  if (it.done) return '';
+  const ids = friendsWanting(it.title);
+  if (!ids.length) return '';
+  return `<div class="same-goal"><span class="stack">${ids.slice(0, 4).map(u => avatar(u, 30)).join('')}</span>
+    <span>${esc(names(ids.slice(0, 3)))}${ids.length > 3 ? ` and ${ids.length - 3} more` : ''}<small>${ids.length === 1 ? 'also has this on their list' : 'also have this on their lists'}</small></span></div>`;
+}
+let wishTimer = null;
+const syncWishesSoon = () => { clearTimeout(wishTimer); wishTimer = setTimeout(syncWishes, 1500); };
+async function syncWishes() {
+  if (!ME) return;
+  const me = api.profile(ME);
+  const mine = S.wishes.filter(w => w.userId === ME);
+  const want = me.shareList === false ? [] : items.filter(i => !i.done);
+  const wantIds = new Set(want.map(i => i.id));
+  const gone = mine.filter(w => !wantIds.has(w.entryId)).map(w => w.entryId);
+  const changed = want.filter(i => { const w = mine.find(x => x.entryId === i.id); return !w || w.title !== i.title || (w.place || '') !== (i.place || '') || w.type !== i.type; });
+  try {
+    if (gone.length) must(await sb.from('wishes').delete().eq('user_id', ME).in('entry_id', gone));
+    if (changed.length) must(await sb.from('wishes').upsert(changed.map(i => ({ user_id: ME, entry_id: i.id, title: i.title, type: i.type, place: i.place || null, source_activity: i.metooFrom || null })), { onConflict: 'user_id,entry_id' }));
+    if (gone.length || changed.length) syncSoon();
+  } catch (e) { console.warn('wishes sync failed', e); }
+}
+// Every save of the list mirrors the titles (debounced)
+const _saveList = save;
+save = function () { _saveList(); syncWishesSoon(); };
+async function setShareList(on) {
+  if (!ME) return;
+  must(await sb.from('profiles').update({ share_list: on }).eq('id', ME));
+  await sync(); await syncWishes();
+  toast(on ? 'Friends can see your goal titles' : 'Your goal titles are hidden from friends');
+  if ($('#passportDlg').open) openPassport();
+}
+// "Me too": copy a friend's post onto your list. Nobody gets notified.
+function meToo(activityId) {
+  const a = S.activities.find(x => x.id === activityId);
+  if (!a || haveGoal(a.title)) return;
+  const it = makeItem({ title: a.title, type: a.type && TYPES[a.type] ? a.type : guessType(a.title, a.place), place: a.place || '', image: a.photo || null, imageCredit: a.photo && !a.photo.includes('/img/') && !a.photo.startsWith('img/') ? `Photo: ${api.profile(a.actorId).name}` : null });
+  it.metooFrom = a.id;
+  items.push(it); save();
+  if (currentView === 'friends' && friendsTab === 'feed') renderFeed();
+  toast('Added to your list');
+}
+// How many friends added one of your goals with "Me too"
+const inspiredCount = () => new Set(S.wishes.filter(w => w.userId !== ME && w.sourceActivity && S.activities.some(a => a.id === w.sourceActivity && a.actorId === ME)).map(w => w.userId)).size;
+const myWins = () => S.challenges.filter(c => api.status(c) === 'ended' && api.membersOf(c.id).length > 1 && api.leaderboard(c.id)[0]?.userId === ME).length;
+// Big stamps appear in friends' feeds (once each)
+async function postStamp(s) {
+  if (!ME) return;
+  const { error } = await sb.from('activities').upsert({ actor_id: ME, kind: 'stamp', entry_id: 'stamp:' + s.id, title: s.label, place: s.icon, caption: s.line, type: 'stamp' }, { onConflict: 'actor_id,entry_id', ignoreDuplicates: true });
+  if (!error) syncSoon();
+}
+
+/* ---------- Challenge pressure ----------
+   Only in a challenge's last 3 days, and only when the result can still change. */
+function pressureFor(c) {
+  if (api.status(c) !== 'active' || c.endsAt - Date.now() > 3 * DAY) return null;
+  const members = api.membersOf(c.id);
+  if (members.length < 2 || !members.includes(ME)) return null;
+  const lb = api.leaderboard(c.id), rank = lb.findIndex(r => r.userId === ME) + 1, me = lb[rank - 1];
+  const left = api.itemsOf(c.id).filter(i => !S.completions.some(x => x.itemId === i.id && x.userId === ME)).sort((a, b) => POINTS[b.difficulty] - POINTS[a.difficulty]);
+  const days = Math.ceil((c.endsAt - Date.now()) / DAY);
+  const when = days <= 1 ? (new Date(c.endsAt).toDateString() === new Date().toDateString() ? 'ends today' : 'ends tomorrow') : `${days} days left`;
+  if (rank > 1) {
+    const gap = lb[0].points - me.points, best = left[0];
+    if (!best || left.reduce((s, i) => s + POINTS[i.difficulty], 0) < gap) return null; // can't catch up any more: stay quiet
+    // The smallest goal that puts you ahead; failing that, one that levels it
+    const bySize = [...left].sort((a, b) => POINTS[a.difficulty] - POINTS[b.difficulty]);
+    const one = bySize.find(i => POINTS[i.difficulty] > gap) || bySize.find(i => POINTS[i.difficulty] === gap);
+    return { c, when, title: `${c.title}: ${when}`, line: `You're ${rank === 2 ? '2nd' : rank === 3 ? '3rd' : rank + 'th'}, ${gap} points behind ${firstName(lb[0].userId)}.`,
+      tip: one ? `“${one.title}” (+${POINTS[one.difficulty]}) would put you ${POINTS[one.difficulty] > gap ? 'ahead' : 'level'}.` : 'A couple of goals would close the gap.', item: one || best };
+  }
+  const second = lb[1], lead = me.points - second.points;
+  const theirBest = Math.max(0, ...api.itemsOf(c.id).filter(i => !S.completions.some(x => x.itemId === i.id && x.userId === second.userId)).map(i => POINTS[i.difficulty]));
+  if (lead > theirBest) return null;
+  return { c, when, title: `${c.title}: ${when}`, line: `You lead by ${lead}. ${firstName(second.userId)} can still catch you.`, tip: left[0] ? `“${left[0].title}” (+${POINTS[left[0].difficulty]}) would make it safe.` : '', item: left[0] };
+}
+function challengeBanner() {
+  if (!ME) return '';
+  const p = S.challenges.map(pressureFor).filter(Boolean).sort((a, b) => a.c.endsAt - b.c.endsAt)[0];
+  return p ? `<button class="ch-alert" data-open-ch="${p.c.id}"><span class="flag-ico">🏁</span><span><b>${esc(p.title)}</b><small>${esc(p.line)}</small></span><span class="mut">›</span></button>` : '';
+}
+
 // Your posts read their photo and caption live from the entry, so a story written later shows up in the feed
 function activityView(a) {
   if (a.actorId !== ME || !a.entryId) return a;
@@ -416,7 +524,7 @@ const welcomeCard = () => `<div class="empty social-welcome">
     <h2>Challenge your friends</h2>
     <p>Start a challenge, send the link, and race each other through your goals, with photo proof and a live leaderboard. All it takes is a name.</p>
     <div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>
-    <p class="hint-line">Your bucket list stays private on your phone. Only challenges are shared.</p>
+    <p class="hint-line">Your photos and stories stay on your phone. Friends in your challenges see your goal titles, so you can spot shared dreams.</p>
   </div>`;
 function renderSocialChrome() {
   if (typeof currentView !== 'undefined' && currentView === 'friends' && !detail) renderFriendsShell();
@@ -426,7 +534,7 @@ function renderFriendsShell() {
   $('#feedPane').hidden = friendsTab !== 'feed';
   $('#challengesPane').hidden = friendsTab !== 'challenges';
   const me = ME && api.profile(ME);
-  $('#friendRoster').innerHTML = (me ? `<span class="roster-p">${avatar(ME, 34)}<small>You</small></span>` : '') +
+  $('#friendRoster').innerHTML = (me ? `<button class="roster-p" data-g="passport">${avatar(ME, 34)}<small>You</small></button>` : '') +
     api.friends().map(f => `<span class="roster-p">${avatar(f.id, 34)}<small>${esc(f.name.split(' ')[0])}</small></span>`).join('');
   if (!ME) { $('#feed').innerHTML = welcomeCard(); $('#challengeList').innerHTML = welcomeCard(); return; }
   if (friendsTab === 'feed') renderFeed(); else renderChallenges();
@@ -440,6 +548,7 @@ async function renderFeed(highlightNew = false) {
     : `<div class="empty"><h2>Quiet for now</h2><p>${api.friends().length ? 'Complete something from your list and it will appear here for your friends.' : 'Your friends\' completions show up here once they join one of your challenges.'}</p>${api.friends().length ? '' : '<div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>'}</div>`;
 }
 function post(a, isNew) {
+  if (a.kind === 'stamp') return stampPost(a, isNew);
   const p = api.profile(a.actorId);
   const reacts = api.reactionsOf(a.id);
   const counts = EMOJIS.map(e => [e, reacts.filter(r => r.emoji === e).length, reacts.some(r => r.emoji === e && r.userId === ME)]);
@@ -452,13 +561,31 @@ function post(a, isNew) {
         <div class="post-line"><b>${esc(a.actorId === ME ? 'You' : p.name)}</b><span class="post-ago">${ago(a.createdAt)}</span></div>
         ${a.place ? `<small>${esc(a.place)}</small>` : ''}
       </div>
+      ${a.actorId !== ME && ME ? (haveGoal(a.title) ? `<span class="metoo done">✓ On your list</span>` : `<button class="metoo" data-metoo="${a.id}">＋ Me too</button>`) : ''}
     </header>
     <div class="post-photo ${a.photo ? '' : 'no-photo'}" style="background:${a.photo ? `${cssUrl(a.photo)} center/cover` : toneBg(t)}" ${a.photo ? `data-zoom-photo="${esc(a.photo)}"` : ''}>
       ${ch ? `<button class="post-ch" data-open-ch="${ch.id}"><b>+${a.points}</b>${esc(ch.title)}</button>` : ''}
       <div class="post-title"><span class="tag">✓ Completed · ${t.label}</span><h3>${esc(a.title)}</h3></div>
     </div>
     ${a.caption ? `<p class="post-cap">${esc(a.caption)}</p>` : ''}
-    <div class="reacts">${counts.map(([e, n, mine]) => `<button class="react ${mine ? 'mine' : ''} ${n ? 'has' : ''}" data-react="${e}" data-act-id="${a.id}"><span>${e}</span>${n ? `<b>${n}</b>` : ''}</button>`).join('')}</div>
+    <div class="reacts">${counts.map(([e, n, mine]) => `<button class="react ${mine ? 'mine' : ''} ${n ? 'has' : ''}" data-react="${e}" data-act-id="${a.id}"><span>${e}</span>${n ? `<b>${n}</b>` : ''}</button>`).join('')}
+</div>
+    ${alsoLine(a)}
+  </article>`;
+}
+function reactsBar(a) {
+  const reacts = api.reactionsOf(a.id);
+  return `<div class="reacts">${EMOJIS.map(e => [e, reacts.filter(r => r.emoji === e).length, reacts.some(r => r.emoji === e && r.userId === ME)]).map(([e, n, mine]) => `<button class="react ${mine ? 'mine' : ''} ${n ? 'has' : ''}" data-react="${e}" data-act-id="${a.id}"><span>${e}</span>${n ? `<b>${n}</b>` : ''}</button>`).join('')}</div>`;
+}
+function stampPost(a, isNew) {
+  const p = api.profile(a.actorId);
+  return `<article class="post ${isNew ? 'is-new' : ''}" data-post="${a.id}">
+    <header class="post-head">${avatar(a.actorId, 38)}
+      <div class="post-who"><div class="post-line"><b>${esc(a.actorId === ME ? 'You' : p.name)}</b><span class="post-ago">${ago(a.createdAt)}</span></div><small>New stamp</small></div>
+    </header>
+    <div class="post-stamp"><div class="big-stamp"><span><b>${esc(a.place || '✦')}</b><small>${esc(a.title)}</small></span></div></div>
+    ${a.caption ? `<p class="post-cap">${esc(a.caption)}</p>` : ''}
+    ${reactsBar(a)}
   </article>`;
 }
 
@@ -511,6 +638,7 @@ function renderChallengePage(c, freshCompletionId) {
   const its = api.itemsOf(c.id);
   const comps = api.completionsOf(c.id);
   const total = its.reduce((s, i) => s + POINTS[i.difficulty], 0);
+  const pressure = pressureFor(c);
 
   // Remember row positions for a smooth re-order (FLIP)
   const prevRects = {};
@@ -543,10 +671,11 @@ function renderChallengePage(c, freshCompletionId) {
       </div>
       <div class="goals">
         <div class="board-head"><h3>Goals</h3>${st === 'active' ? `<button class="link-quiet" data-ch-add="${c.id}">+ Add goal</button>` : ''}</div>
+        ${pressure ? `<div class="ch-catchup">⏳ <b>${esc(pressure.when[0].toUpperCase() + pressure.when.slice(1))}.</b> ${esc(pressure.line)}<small>${esc(pressure.tip)}</small></div>` : ''}
         ${its.map(i => {
           const done = comps.filter(x => x.itemId === i.id);
           const mine = done.find(x => x.userId === ME);
-          return `<div class="goal ${mine ? 'done' : ''}">
+          return `<div class="goal ${mine ? 'done' : ''} ${pressure?.item?.id === i.id ? 'fastest' : ''}">
             <span class="diff ${i.difficulty}">${DIFF_LABEL[i.difficulty]}<b>${POINTS[i.difficulty]}</b></span>
             <span class="goal-t">${esc(i.title)}</span>
             <span class="proofs">${done.map(x => `<button class="proof ${x.status} ${x.id === freshCompletionId ? 'fresh' : ''}" data-proof="${x.id}" style="background-image:${cssUrl(x.proof)}" title="${esc(firstName(x.userId))}">${avatar(x.userId, 18)}</button>`).join('')}</span>
@@ -746,6 +875,9 @@ document.addEventListener('click', e => {
   if (ftab) { friendsTab = ftab.dataset.ftab; renderFriendsShell(); return; }
   if (t.closest('[data-new-ch]')) return requireProfile('Pick a name for your challenges. Friends will see it on the leaderboard.').then(openNewChallenge, () => {});
   if (t.closest('[data-join-link]')) return openPaste();
+  const mt = t.closest('[data-metoo]');
+  if (mt) return meToo(mt.dataset.metoo);
+  if (t.closest('[data-share-list]')) return setShareList(t.closest('[data-share-list]').dataset.shareList === 'on');
   const inv = t.closest('[data-invite]');
   if (inv) return openInvite(api.challengeSync(inv.dataset.invite));
   const och = t.closest('[data-open-ch]');

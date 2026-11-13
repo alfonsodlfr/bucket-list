@@ -724,10 +724,25 @@ body.wr-open{overflow:hidden}
 }
 
 /* "+" sheet */
-.tab-add,.map-full-btn,.map-done{display:none}
+.tab-add,.map-full-btn,.map-done,.topbar .tab.tab-add{display:none}
 #createDlg{width:min(440px,92vw)}
 .create{padding:28px 22px 24px;display:grid;gap:10px}
 .create .eyebrow{margin:0 4px 8px}
+.qa{display:grid;gap:8px;margin-bottom:6px;padding:0;grid-template-columns:minmax(0,1fr)}
+.qa-row{display:flex;align-items:center;gap:8px;padding:5px 5px 5px 16px;border:1px solid var(--gold);border-radius:999px;background:rgba(200,169,106,.05)}
+.qa-row input{border:0;padding:8px 0;font-size:16px}
+.qa-go{flex:none;width:36px;height:36px;border-radius:50%;background:var(--gold);display:grid;place-items:center;transition:opacity .2s}
+.qa-go:disabled{opacity:.3}
+.qa-go svg{width:18px;height:18px;fill:none;stroke:var(--bg);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.qa-preview{display:flex;gap:12px;align-items:center;padding:2px 4px;animation:in .3s var(--ease)}
+.qa-img{flex:none;width:56px;height:70px;border-radius:8px;background:var(--surface);cursor:pointer}
+.qa-img.loading{animation:breathe 1.2s ease-in-out infinite}
+.qa-meta{min-width:0;display:grid;gap:6px}
+.qa-chips{display:flex;gap:6px;flex-wrap:wrap}
+.qa-chips .chip{font-size:12px;padding:5px 11px;border:1px solid var(--line-strong);border-radius:999px}
+.qa-chips #qaType::after{content:" ⇄";color:var(--muted);font-size:10px}
+.qa-meta small{font-size:11px;color:var(--muted)}
+.qa-note{margin:0 0 4px 18px;font-size:12px;color:var(--muted)}
 .create-opt{display:flex;align-items:center;gap:16px;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:12px;transition:border-color .3s,background .3s}
 .create-opt:hover,.create-opt:active{border-color:var(--gold);background:rgba(200,169,106,.06)}
 .create-opt .ico{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(200,169,106,.12)}
@@ -764,6 +779,161 @@ body.wr-open{overflow:hidden}
 .board-solo{margin:-4px 0 12px}
 .ch-link-note{margin:-6px 0 0}
 
+/* ===================== Goals: focus, progress, seasons, ritual, stamps, near ===================== */
+.gold-eye{color:var(--gold)}
+.focus-area{margin:-6px 0 34px;display:grid;gap:12px}
+.focus-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.focus-head .link-quiet{padding:0;font-size:11px;letter-spacing:.12em}
+.focus-rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.focus-row{display:flex;align-items:center;gap:14px;padding:12px 14px 12px 12px;border:1px solid rgba(200,169,106,.28);border-radius:14px;background:linear-gradient(120deg,rgba(200,169,106,.09),rgba(200,169,106,.02));cursor:pointer;transition:border-color .3s}
+.focus-row:hover{border-color:rgba(200,169,106,.55)}
+.focus-img{flex:none;width:46px;height:46px;border-radius:10px;background-size:cover;background-position:center}
+.focus-t{flex:1;min-width:0;display:grid;gap:3px}
+.focus-t b{font-weight:400;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.focus-t small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.focus-plus{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--gold);color:var(--gold);font-size:18px;line-height:1;transition:background .2s,color .2s}
+.focus-plus:hover{background:var(--gold);color:var(--bg)}
+.g-ring{--s:46px;flex:none;position:relative;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--gold) var(--p),rgba(237,228,214,.12) 0)}
+.g-ring::before{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--surface)}
+.g-ring>span{position:relative;text-align:center;font-size:calc(var(--s) * .3);font-weight:400;line-height:1}
+.g-ring small{display:block;font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.ch-alert{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;text-align:left;width:100%;border:1px solid rgba(220,140,90,.45);background:linear-gradient(120deg,rgba(200,119,74,.2),rgba(200,169,106,.05));font-size:14px;color:var(--text)}
+.ch-alert .flag-ico{font-size:20px}
+.ch-alert>span{flex:none}
+.ch-alert>span:nth-child(2){flex:1;min-width:0;display:grid;gap:2px}
+.ch-alert small{font-size:12px;color:var(--muted)}
+.card-pill{font-size:9px;letter-spacing:.08em;padding:4px 8px;border-radius:999px;background:rgba(12,11,10,.55);border:1px solid rgba(255,255,255,.2);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.card-pill.gold{background:var(--gold);border-color:var(--gold);color:#14110f;font-weight:500}
+.card-pill .stack{display:inline-flex}.card-pill .av{--s:14px!important;font-size:6px;margin-left:-4px;border:1px solid #0c0b0a}.card-pill .av:first-child{margin-left:0}
+.card-prog{margin-top:10px;display:grid;gap:5px}
+.card-prog small{font-size:11px;color:rgba(237,228,214,.75)}
+.bar-thin{height:4px;border-radius:4px;background:rgba(237,228,214,.14);overflow:hidden}
+.bar-thin i{display:block;height:100%;background:var(--gold);border-radius:4px;transition:width .6s var(--ease)}
+.seg{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:999px;gap:2px;justify-self:start}
+.seg button{font-size:12px;letter-spacing:.02em;text-transform:none;color:var(--muted);padding:7px 14px;border-radius:999px;transition:background .2s,color .2s}
+.seg button.on{background:rgba(237,228,214,.12);color:var(--text)}
+.prog-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:6px}
+.prog-fields .unit-other{grid-column:1/-1}
+.prog{display:grid;gap:12px;margin:6px 0 26px;padding:18px;border:1px solid var(--line);border-radius:14px}
+.prog-top{display:flex;align-items:baseline;gap:8px}
+.prog-num{font-size:48px;font-weight:200;letter-spacing:-.04em;line-height:1}
+.prog-of{color:var(--muted);font-size:14px}
+.prog-pct{margin-left:auto;color:var(--gold);font-size:14px}
+.prog .spark{display:flex;align-items:flex-end;gap:4px;height:46px}
+.prog .spark i{flex:1;background:rgba(200,169,106,.45);border-radius:3px 3px 0 0}
+.prog .spark i:last-child{background:var(--gold)}
+.prog>.btn{justify-self:start}
+.prog-log{display:grid}
+.prog-log div{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.prog-log span{width:90px;color:var(--muted)}
+.prog-log b{font-weight:400;flex:1}
+.prog-log .link-quiet{padding:0}
+.focus-pill{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 14px 10px 10px;margin:0 0 22px;border-radius:14px;border:1px solid rgba(200,169,106,.3);background:rgba(200,169,106,.06)}
+.focus-pill span:not(.g-ring){flex:1;display:grid;gap:2px}
+.focus-pill b{font-weight:500;color:var(--gold);font-size:13px}
+.focus-pill small{font-size:12px;color:var(--muted)}
+.focus-pill em{font-style:normal;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.best{margin:0 0 26px;display:grid;gap:10px}
+.best-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.best-status{font-size:13px;color:var(--muted)}.best-status.gold{color:var(--gold)}
+.months{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.months i{height:30px;border-radius:5px;background:rgba(237,228,214,.06);display:grid;place-items:end center;padding-bottom:4px;font-style:normal}
+.months i span{font-size:9px;color:var(--muted)}
+.months i.ok{background:rgba(200,169,106,.32)}.months i.ok span{color:var(--text)}
+.months i.pk{background:var(--gold)}.months i.pk span{color:#14110f;font-weight:500}
+.months i.now{outline:1.5px solid var(--text);outline-offset:2px}
+.best .hint-line{margin:0}
+.same-goal{display:flex;align-items:center;gap:12px;margin:0 0 26px;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
+.same-goal .stack{display:inline-flex}.same-goal .stack .av{margin-left:-8px;border:2px solid var(--surface)}.same-goal .stack .av:first-child{margin-left:0}
+.same-goal span{display:grid;gap:2px;font-size:14px}.same-goal small{font-size:12px;color:var(--muted)}
+.g-sheet{padding:34px 28px 26px;display:grid;gap:14px}
+.g-sheet h2{font-size:28px;line-height:1.15;font-weight:300}
+.g-sheet .hint-line{margin:0;font-size:13px;line-height:1.55}
+.g-sheet .form-actions{margin-top:8px}
+.g-sheet .btn.wide{width:100%}
+.focus-date{display:grid;gap:6px}
+.swap{display:grid;gap:8px}
+.pick-row-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;text-align:left;font-size:14px}
+.pick-row-btn small{color:var(--muted);font-size:11px;white-space:nowrap}
+.checkin{text-align:center;justify-items:center}
+.checkin h2{font-size:22px}
+.ck-stepper{display:flex;align-items:center;gap:22px;margin:6px 0}
+.ck-rnd{width:56px;height:56px;border-radius:50%;border:1px solid var(--line-strong);font-size:26px;font-weight:200}
+.ck-rnd.gold{border-color:var(--gold);color:var(--gold)}
+.ck-num{display:grid;justify-items:center;gap:4px}
+.ck-num input{width:130px;text-align:center;font-size:52px;font-weight:200;letter-spacing:-.04em;border:0;padding:0;-moz-appearance:textfield}
+.ck-num input::-webkit-outer-spin-button,.ck-num input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ck-num small{font-size:12px;color:var(--muted)}
+.checkin .bar-thin{width:100%}
+.ck-after{margin:0;font-size:13px;color:var(--muted)}
+.checkin .link-quiet{padding:4px}
+.ritual-year{font-size:76px;font-weight:200;letter-spacing:-.05em;line-height:.9;color:var(--gold)}
+.plan-pick{display:grid;gap:8px;max-height:46dvh;overflow-y:auto}
+.plan-opt{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px;border:1px solid var(--line);border-radius:12px;text-align:left;font-size:14px;transition:border-color .2s,background .2s}
+.plan-opt.on{border-color:var(--gold);background:rgba(200,169,106,.07)}
+.plan-opt i{flex:none;width:40px;height:40px;border-radius:8px;background-size:cover;background-position:center}
+.plan-opt span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan-opt em{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--line-strong);display:grid;place-items:center;font-style:normal;font-size:12px;color:var(--bg)}
+.plan-opt.on em{background:var(--gold);border-color:var(--gold)}
+.plan-strip{display:flex;gap:8px;flex-wrap:wrap}
+.plan-strip i{position:relative;width:56px;height:70px;border-radius:8px;background-size:cover;background-position:center;display:grid;place-items:center}
+.plan-strip i.todo{opacity:.35}
+.plan-strip b{width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--bg);display:grid;place-items:center;font-size:12px}
+.stamp-new{text-align:center;justify-items:center;padding-top:44px}
+.stamp-new h2{font-size:22px;max-width:320px}
+.big-stamp{width:150px;height:150px;margin:8px auto;border-radius:50%;border:3px dashed var(--gold);display:grid;place-items:center;text-align:center;position:relative;transform:rotate(-8deg);color:var(--gold);box-shadow:0 0 50px rgba(200,169,106,.25);animation:thump .7s cubic-bezier(.2,1.6,.4,1) both}
+.big-stamp::before{content:"";position:absolute;inset:8px;border-radius:50%;border:1.5px solid rgba(200,169,106,.6)}
+.big-stamp b{display:block;font-size:44px;font-weight:200;color:var(--text);line-height:1}
+.big-stamp small{display:block;font-size:9px;letter-spacing:.2em;text-transform:uppercase;margin-top:4px}
+.big-stamp .when{opacity:.7;letter-spacing:.14em}
+.big-stamp.small{width:120px;height:120px}.big-stamp.small b{font-size:34px}
+@keyframes thump{0%{transform:rotate(-8deg) scale(1.8);opacity:0}100%{transform:rotate(-8deg) scale(1);opacity:1}}
+.stamp-btns{display:grid;gap:8px;justify-items:center;margin-top:6px}
+.share-switch{margin-top:-4px}
+.pp-share{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+.pp-share small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.pp-share .btn{flex:none}
+.pp-head{display:flex;align-items:center;gap:14px}
+.pp-head h2{font-size:24px}.pp-head small{font-size:12px;color:var(--muted)}
+.pp-group{display:grid;gap:10px;margin-top:4px}
+.stamps{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:12px}
+.stamps .stamp{aspect-ratio:1;border-radius:50%;display:grid;place-items:center;text-align:center;border:1.5px dashed rgba(200,169,106,.75);color:var(--gold);position:relative;transform:rotate(var(--r,0deg));padding:6px}
+.stamps .stamp::before{content:"";position:absolute;inset:4px;border-radius:50%;border:1px solid rgba(200,169,106,.4)}
+.stamps .stamp.sq{border-radius:12px}.stamps .stamp.sq::before{border-radius:9px}
+.stamps .stamp b{display:block;font-size:22px;font-weight:200;color:var(--text);line-height:1}
+.stamps .stamp small{display:block;font-size:7px;letter-spacing:.14em;text-transform:uppercase;margin-top:3px;line-height:1.2}
+.stamps .stamp.off{opacity:.25;border-color:var(--line-strong);color:var(--muted)}
+.map-links{display:flex;gap:18px;margin-top:10px}
+.map-links .link-quiet{padding:0}
+.near .discover-cta{margin-top:4px}
+.near-note .link-quiet{padding:0 0 0 4px;font-size:inherit}
+.post-stamp{display:grid;place-items:center;aspect-ratio:4/3;border-radius:6px;background:radial-gradient(90% 70% at 50% 40%,#3a2c18,#151311)}
+.post-stamp .big-stamp{animation:none;transform:rotate(-6deg) scale(.85)}
+.metoo{flex:none;margin-left:auto;display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 13px;border-radius:999px;background:var(--text);color:var(--bg);font-size:13px;font-weight:500;white-space:nowrap}
+.metoo.done{background:rgba(200,169,106,.14);color:var(--gold);border:1px solid rgba(200,169,106,.45);font-weight:400}
+.also-line{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted)}
+.also-line .stack{display:inline-flex}.also-line .av{margin-left:-5px;border:1.5px solid var(--bg)}.also-line .av:first-child{margin-left:0}
+.ch-catchup{margin:-4px 0 14px;padding:12px 14px;border-radius:12px;border:1px solid rgba(220,140,90,.45);background:linear-gradient(120deg,rgba(200,119,74,.18),rgba(200,169,106,.04));font-size:14px}
+.ch-catchup small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.goal.fastest{border-color:rgba(200,169,106,.5)}
+@media (max-width:760px){
+  .focus-area{margin:-4px 0 22px}
+  .focus-rows{grid-template-columns:1fr;gap:8px}
+  .focus-row{padding:10px 12px 10px 10px;gap:12px}
+  .focus-img{width:42px;height:42px}
+  .focus-t b{font-size:14px}
+  .g-ring{--s:42px}
+  .card-pill{font-size:7.5px;padding:3px 6px}
+  .card-prog small{font-size:9.5px}
+  .card-prog{margin-top:6px}
+  .g-sheet{padding:30px 20px 22px}
+  .g-sheet h2{font-size:24px}
+  .stamps{grid-template-columns:repeat(4,1fr);gap:10px}
+  .stamps .stamp b{font-size:18px}
+  .stamps .stamp small{font-size:6px;letter-spacing:.1em}
+  .months i{height:26px}
+}
+
 /* Bottom sheets: only used on mobile */
 .sheet,.grab{display:none}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
@@ -790,7 +960,7 @@ body.wr-open{overflow:hidden}
   .topbar .tab[data-tab="list"]{order:1}.topbar .tab[data-tab="map"]{order:2}.tab-add{order:3}
   .topbar .tab[data-tab="memories"]{order:4}.topbar .tab[data-tab="friends"]{order:5}
   .topbar .tab[data-tab="explore"]{display:none}
-  .topbar .tab-add{display:flex;align-items:center;justify-content:center}
+  .topbar .tab.tab-add{display:flex;align-items:center;justify-content:center}
   .add-dot{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--gold);box-shadow:0 6px 20px rgba(200,169,106,.35);transition:transform .2s}
   .tab-add:active .add-dot{transform:scale(.92)}
   .topbar .tab-add svg{display:block;width:22px;height:22px;stroke:var(--bg);stroke-width:2}
@@ -1016,6 +1186,7 @@ body.wr-open{overflow:hidden}
   <div style="height:44px"></div>
 
   <section id="listView">
+    <div class="focus-area" id="focusArea" hidden></div>
     <div class="filters">
       <div class="chips" id="chips"></div>
       <div class="filters-right">
@@ -1050,6 +1221,7 @@ body.wr-open{overflow:hidden}
         <div class="eyebrow">The world</div>
         <h2 class="map-title"><b id="mapCount">0</b> <span id="mapNoun">countries</span> scratched off</h2>
         <p id="mapSub"></p>
+        <div class="map-links"><button class="link-quiet" data-g="passport">Your passport</button><button class="link-quiet" data-g="near">◎ Near me</button></div>
       </div>
       <div class="map-tools">
         <div class="chips">
@@ -1131,6 +1303,14 @@ body.wr-open{overflow:hidden}
       <button type="button" class="sg-x" id="sgNo" aria-label="No thanks">×</button>
     </div>
     <label class="full">Description<textarea name="description" maxlength="600" placeholder="Why it matters"></textarea></label>
+    <div class="full field kind-field">Kind of goal
+      <div class="seg" id="kindSeg" role="group"><button type="button" data-kind="once" class="on">One-off</button><button type="button" data-kind="progress">Track progress</button></div>
+      <div class="prog-fields" id="progFields" hidden>
+        <label>Target<input name="goalTarget" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 12"></label>
+        <label>Unit<select name="unit" id="unitSelect"></select></label>
+        <label class="unit-other" id="unitOtherWrap" hidden>Your unit<input name="unitOther" maxlength="16" placeholder="e.g. concerts"></label>
+      </div>
+    </div>
     <label>Type<select name="type" id="typeSelect"></select></label>
     <label>Place<input name="place" placeholder="Tromsø, Norway"></label>
     <div class="full done-now" id="doneNow">
@@ -1211,10 +1391,25 @@ body.wr-open{overflow:hidden}
   </div>
 </dialog>
 
+<dialog id="focusDlg" aria-label="Focus"><div class="g-sheet" id="focusBody"></div></dialog>
+<dialog id="checkinDlg" aria-label="Check in"><div class="g-sheet checkin" id="checkinBody"></div></dialog>
+<dialog id="ritualDlg" aria-label="Your year"><div class="g-sheet ritual" id="ritualBody"></div></dialog>
+<dialog id="stampDlg" aria-label="New stamp"><div class="g-sheet stamp-new" id="stampBody"></div></dialog>
+<dialog id="passportDlg" aria-label="Passport"><div class="g-sheet passport" id="passportBody"></div></dialog>
+<dialog id="nearDlg" aria-label="Near you"><div class="g-sheet near" id="nearBody"></div></dialog>
+
 <dialog id="createDlg" aria-label="Add to your list">
   <div class="create">
     <div class="eyebrow">Add to your list</div>
-    <button class="create-opt" data-create="entry"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></span><span><b>Write an entry</b><small>Something you already have in mind</small></span></button>
+    <form class="qa" id="qaForm" autocomplete="off">
+      <div class="qa-row"><input id="qaTitle" maxlength="120" placeholder="What do you want to do?" enterkeyhint="done" aria-label="Title"><button class="qa-go" id="qaGo" aria-label="Add" disabled><svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button></div>
+      <div class="qa-preview" id="qaPreview" hidden>
+        <div class="qa-img" id="qaImg"></div>
+        <div class="qa-meta"><div class="qa-chips"><button type="button" class="chip on" id="qaType"></button><span class="chip" id="qaPlace" hidden></span></div><small id="qaHint">Photo · tap to see another</small></div>
+      </div>
+      <p class="qa-note" id="qaNote">Just the title. We'll find a photo.</p>
+    </form>
+    <button class="create-opt" data-create="entry"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></span><span><b>Full entry with details</b><small>Description, photos, already done…</small></span></button>
     <button class="create-opt" data-create="idea"><span class="ico"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg></span><span><b>Give me an idea</b><small>One suggestion at a time, picked for you</small></span></button>
     <button class="create-opt" data-create="browse"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></span><span><b>Browse all ideas</b><small>The whole collection, by category</small></span></button>
     <button class="create-opt" data-create="country"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.3 3.8 5.2 3.8 8.5s-1.2 6.2-3.8 8.5c-2.6-2.3-3.8-5.2-3.8-8.5s1.2-6.2 3.8-8.5"/></svg></span><span><b>Scratch off a country</b><small>Mark somewhere you've already been</small></span></button>
@@ -1229,6 +1424,7 @@ body.wr-open{overflow:hidden}
     <h2>What should friends call you?</h2>
     <p class="hint-line" id="profileWhy"></p>
     <label class="full">Your name<input id="profileName" maxlength="40" placeholder="e.g. Alfonso" autocomplete="given-name" required></label>
+    <label class="switch full share-switch"><input type="checkbox" id="profileShare" checked><span class="track"></span><span class="sw-text"><b>Show friends what's on my list</b><small>Goal titles only, to people in your challenges. Never photos or stories.</small></span></label>
     <p class="proof-msg warn full" id="profileErr"></p>
     <div class="form-actions"><button type="button" class="btn" id="profileCancel">Not now</button><button class="btn solid" id="profileGo">Continue</button></div>
   </form>
@@ -1410,6 +1606,7 @@ function toast(msg) {
 }
 
 function render() {
+  if (typeof renderFocusArea === 'function') { renderFocusArea(); updateYearPill(); }
   const total = items.length;
   const done = items.filter(i => i.done).length;
   const pct = total ? Math.round(done / total * 100) : 0;
@@ -1472,12 +1669,13 @@ function card(i, n) {
   return `
     <article class="card ${i.done ? 'is-done' : ''}" style="--i:${n}" tabindex="0" data-act="view" data-id="${i.id}">
       <div class="img" style="${bg}"></div>
-      <div class="top"><span class="tag">${t.label}</span>${i.done ? '<span class="seal">Completed</span>' : ''}</div>
+      <div class="top"><span class="tag">${t.label}</span>${i.done ? '<span class="seal">Completed</span>' : cardBadge(i)}</div>
       <div class="body">
         ${placeLine(i)}
         <h3>${esc(i.title)}</h3>
         ${i.description ? `<p class="desc">${esc(i.description)}</p>` : ''}
         ${mini}
+        ${cardProgress(i)}
         <div class="actions">
           <button class="primary" data-act="${i.done ? 'story' : 'toggle'}" data-id="${i.id}">${i.done ? (hasStory(i) ? 'Story' : 'Write story') : 'Complete'}</button>
           ${i.done ? `<button data-act="toggle" data-id="${i.id}">Reopen</button>` : `<button data-act="edit" data-id="${i.id}">Edit</button>`}
@@ -1549,7 +1747,7 @@ $('#ideaAdd').onclick = () => {
   showIdea();
 };
 document.addEventListener('click', e => {
-  if (e.target.closest('[data-open-create]')) $('#createDlg').showModal();
+  if (e.target.closest('[data-open-create]')) { resetQuickAdd(); $('#createDlg').showModal(); }
   if (e.target.closest('[data-open-idea]')) openIdea();
   if (e.target.closest('[data-edit-prefs]')) openOnboarding('edit');
 });
@@ -1563,6 +1761,75 @@ $('#createDlg').addEventListener('click', e => {
   else if (a === 'idea') openIdea();
   else if (a === 'browse') setView('explore');
   else if (a === 'country') { setView('map'); toast('Tap a country to scratch it off'); }
+});
+
+/* Quick add: just a title. Type, place and photo are guessed, and each can be changed later. */
+const TYPE_HINTS = [
+  ['food', /\b(eat|taste|tasting|dine|dinner|restaurant|cook|cooking|bake|wine|beer|coffee|street food|omakase|tapas|sushi|ramen|pasta|market|michelin)\b/i],
+  ['culture', /\b(museum|gallery|opera|concert|festival|theatre|theater|ballet|exhibition|biennale|cathedral|temple|ruins|flamenco|fado|show)\b/i],
+  ['learning', /\b(learn|language|course|class|lessons?|study|degree|speak|fluent|instrument|piano|guitar|code|certificate)\b/i],
+  ['career', /\b(promotion|startup|start-up|business|launch|talk|conference|mentor|job|career|sabbatical|raise|team|client|publish)\b/i],
+  ['activity', /\b(run|marathon|hike|trek|climb|swim|dive|diving|surf|ski|snowboard|skydive|paraglid\w*|kayak|sail|cycle|bike|ride|bungee|race|triathlon|whale|shark)\b/i],
+  ['personal', /\b(lose|weight|read|books?|write|habit|meditat\w*|quit|save|savings|volunteer|plant|garden|family|friends|kg|lbs)\b/i],
+  ['trip', /\b(visit|travel|trip|see|road ?trip|explore|tour|stay|weekend|island|safari|northern lights|aurora|cherry blossom)\b/i],
+];
+function guessType(title, place) {
+  const idea = IDEAS.find(i => i.title.toLowerCase() === title.toLowerCase());
+  if (idea) return idea.type;
+  for (const [t, re] of TYPE_HINTS) if (re.test(title)) return t;
+  return place ? 'trip' : 'personal';
+}
+function guessPlace(title) {
+  if (typeof WORLD === 'undefined' || !WORLD) return '';
+  const hit = countryForEntry({ place: title });
+  return hit ? WORLD.byId[hit].name : '';
+}
+let qa = null; // { title, type, place, list, i }
+function resetQuickAdd() {
+  qa = { title: '', type: 'personal', place: '', list: [], i: 0, typeTouched: false };
+  $('#qaTitle').value = ''; $('#qaGo').disabled = true;
+  $('#qaPreview').hidden = true; $('#qaNote').hidden = false;
+}
+function renderQuickAdd() {
+  const x = qa.list[qa.i];
+  $('#qaPreview').hidden = !qa.title;
+  $('#qaNote').hidden = !!qa.title;
+  $('#qaType').textContent = TYPES[qa.type].label;
+  $('#qaPlace').hidden = !qa.place; $('#qaPlace').textContent = '📍 ' + qa.place;
+  $('#qaImg').style.background = x ? `url("${x.src}") center/cover` : toneBg(TYPES[qa.type]);
+  $('#qaImg').classList.toggle('loading', qa.loading);
+  $('#qaHint').textContent = qa.list.length > 1 ? 'Photo · tap to see another' : qa.loading ? 'Finding a photo…' : x ? 'Photo' : 'No photo yet · add one later';
+}
+let qaTimer = null;
+$('#qaTitle').addEventListener('input', e => {
+  const title = e.target.value.trim();
+  qa.title = title; $('#qaGo').disabled = !title;
+  if (!title) return renderQuickAdd();
+  qa.place = guessPlace(title);
+  if (!qa.typeTouched) qa.type = guessType(title, qa.place);
+  renderQuickAdd();
+  clearTimeout(qaTimer);
+  qaTimer = setTimeout(async () => {
+    const asked = title; qa.loading = true; renderQuickAdd();
+    const list = await findSuggestions(title, qa.place);
+    if (qa.title !== asked) return;
+    qa.list = list; qa.i = 0; qa.loading = false; renderQuickAdd();
+  }, 550);
+});
+$('#qaImg').onclick = () => { if (qa.list.length > 1) { qa.i = (qa.i + 1) % qa.list.length; renderQuickAdd(); } };
+$('#qaType').onclick = () => { // cycle through types
+  const keys = Object.keys(TYPES).filter(k => k !== 'other');
+  qa.type = keys[(keys.indexOf(qa.type) + 1) % keys.length]; qa.typeTouched = true; renderQuickAdd();
+};
+$('#qaForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!qa.title) return;
+  const x = qa.list[qa.i];
+  const it = makeItem({ title: qa.title, type: qa.type, place: qa.place, image: x?.src || null, imageCredit: x?.credit || null });
+  items.push(it);
+  try { save(); } catch { items.pop(); return toast('Storage is full'); }
+  $('#createDlg').close();
+  showNewEntry(it, qa.place ? `Added · ${qa.place} is now on your map` : 'Added to your list');
 });
 
 /* Onboarding: swipe right on what you're into, left on what you're not.
@@ -1818,7 +2085,8 @@ mobileMQ.addEventListener('change', () => {
 const _showModal = HTMLDialogElement.prototype.showModal;
 HTMLDialogElement.prototype.showModal = function () {
   _showModal.call(this);
-  if (useSheet() && document.activeElement?.matches('input,textarea,select,[contenteditable]') && this.contains(document.activeElement)) {
+  // Sheets open with nothing selected: no keyboard popping up, no focus ring on the first button
+  if (useSheet() && this.contains(document.activeElement)) {
     document.activeElement.blur();
     this.setAttribute('tabindex', '-1'); this.focus({ preventScroll: true });
   }
@@ -1950,6 +2218,7 @@ function setView(v) {
 }
 function refresh() {
   render();
+  if (typeof checkStamps === 'function') checkStamps();
   if (currentView === 'memories') renderLane();
   if (currentView === 'map') renderMap();
   if (currentView === 'friends' && !detail) renderFriends();
@@ -2720,9 +2989,23 @@ $('#shareGo').onclick = async () => {
 };
 $('#shareClose').onclick = () => shareDlg.close();
 
+// A new entry must be visible: clear any filter that would hide it, then point at it
+function showNewEntry(it, message) {
+  if (filter.type !== 'all' && filter.type !== it.type) filter.type = 'all';
+  if (filter.status === (it.done ? 'open' : 'done')) filter.status = 'all';
+  setView('list');
+  requestAnimationFrame(() => {
+    const card = document.querySelector(`.card[data-id="${it.id}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    card.classList.add('just-added');
+    setTimeout(() => card.classList.remove('just-added'), 2400);
+  });
+  if (message) toast(message);
+}
 function makeItem(d) {
   return { id: crypto.randomUUID(), title: d.title, description: d.description || '', type: d.type,
-    place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null, imageCredit: d.imageCredit || null,
+    place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null, imageCredit: d.imageCredit || null, progress: d.progress || undefined,
     highlights: d.highlights || [], done: false, doneAt: null, createdAt: Date.now() };
 }
 
@@ -2797,6 +3080,12 @@ function openForm(it) {
   renderHlList();
   setImage(it?.image || null);
   pendingCredit = it?.imageCredit || null;
+  setKind(it?.progress ? 'progress' : 'once');
+  form.goalTarget.value = it?.progress?.target ?? '';
+  if (!$('#unitSelect').options.length) $('#unitSelect').innerHTML = UNITS.map(x => `<option value="${x.u}">${x.u}</option>`).join('') + '<option value="other">Other…</option>';
+  const u = it?.progress?.unit || 'kg', preset = UNITS.some(x => x.u === u);
+  form.unit.value = preset ? u : 'other'; form.unitOther.value = preset ? '' : u;
+  $('#unitOtherWrap').hidden = preset;
   resetSuggest();
   $('#doneNow').hidden = !!it;
   $('#doneWhen').hidden = true;
@@ -2947,10 +3236,12 @@ function openEntry(it) {
     <div class="entry-body">
       ${it.description ? `<p class="lead">${esc(it.description)}</p>` : ''}
       ${it.imageCredit ? `<p class="credit-line">${esc(it.imageCredit)}</p>` : ''}
+      ${goalBlock(it)}
       <div class="entry-actions">
         ${it.done
           ? `<button class="btn solid" data-act="story" data-id="${it.id}">${hasStory(it) ? 'Story' : 'Write story'}</button>`
           : `<button class="btn solid" data-act="toggle" data-id="${it.id}">Complete</button>`}
+        ${!it.done && !it.focus ? `<button class="btn" data-g="focus" data-id="${it.id}">Focus</button>` : ''}
         <button class="btn" data-act="edit" data-id="${it.id}">Edit</button>
         <button class="link-quiet" data-act="delete" data-id="${it.id}">Remove</button>
       </div>
@@ -2983,6 +3274,13 @@ form.addEventListener('submit', e => {
     imageCredit: pendingImage && !pendingImage.startsWith('data:') ? pendingCredit : null, // own photos need no credit
     highlights: pendingHighlights.map(h => ({ ...h, caption: h.caption.trim() })),
   };
+  // Progress goal: target + any unit. Switching back to one-off drops it.
+  if (form.dataset.kind === 'progress') {
+    const target = parseFloat(form.goalTarget.value), unit = (form.unit.value === 'other' ? form.unitOther.value : form.unit.value).trim();
+    if (!(target > 0)) { form.goalTarget.focus(); return toast('Set a target above zero'); }
+    if (!unit) { form.unitOther.focus(); return toast('Name your unit'); }
+    fields.progress = { target, unit, log: prev?.progress?.log || [] };
+  } else fields.progress = undefined;
   const backup = JSON.stringify(items);
   if (editingId) Object.assign(items.find(i => i.id === editingId), fields);
   else {
@@ -2993,7 +3291,7 @@ form.addEventListener('submit', e => {
       it.done = true;
       it.doneAt = whenTime(date);
       it.memory = { date, with: '', highlight: '', story: '', photos: [] };
-    }
+    } else if (it.progress && focusItems().length < MAX_FOCUS) it.focus = { until: null, since: Date.now() }; // progress goals start in focus
     items.push(it);
   }
   try { save(); } catch { items = JSON.parse(backup); return alert('Storage is full. Try a smaller photo.'); }
@@ -3004,23 +3302,18 @@ form.addEventListener('submit', e => {
   if (!wasEdit && saved.done) onEntryCompleted(saved);
   dlg.close();
   if (wasEdit) refresh();
-  else {
-    // A new entry must be visible: clear any filter that would hide it, then point at it
-    const it = items.at(-1);
-    if (filter.type !== 'all' && filter.type !== it.type) filter.type = 'all';
-    if (filter.status === (it.done ? 'open' : 'done')) filter.status = 'all';
-    setView('list');
-    requestAnimationFrame(() => {
-      const card = document.querySelector(`.card[data-id="${it.id}"]`);
-      if (!card) return;
-      card.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      card.classList.add('just-added');
-      setTimeout(() => card.classList.remove('just-added'), 2400);
-    });
-  }
+  else showNewEntry(items.at(-1));
   toast(scratched ? `${saved.done && !wasEdit ? 'Completed' : 'Saved'} · ${WORLD.byId[scratched].name} scratched off your map`
     : wasEdit ? 'Saved' : saved.done ? 'Added as completed' : 'Added to your list');
 });
+/* One-off or progress goal */
+function setKind(k) {
+  form.dataset.kind = k;
+  $('#kindSeg').querySelectorAll('[data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === k));
+  $('#progFields').hidden = k !== 'progress';
+}
+$('#kindSeg').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) setKind(b.dataset.kind); });
+$('#unitSelect').addEventListener('change', () => { $('#unitOtherWrap').hidden = form.unit.value !== 'other'; if (form.unit.value === 'other') form.unitOther.focus(); });
 form.completed.addEventListener('change', () => {
   $('#doneWhen').hidden = !form.completed.checked;
   $('#saveBtn').textContent = form.completed.checked ? 'Add as completed' : 'Add to list';
@@ -3031,6 +3324,7 @@ form.completed.addEventListener('change', () => {
 <script src="lib/supabase.js"></script>
 <script src="social.js"></script>
 <script src="wrapped.js"></script>
+<script src="goals.js"></script>
 <script>
   // Boot once every module is loaded
   $('#drawer').insertAdjacentHTML('afterbegin', '<div class="grab" aria-hidden="true"></div>');
@@ -3057,7 +3351,7 @@ form.completed.addEventListener('change', () => {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reloadIntoUpdate(); });
   }
   // An invite link takes priority over the first-run interests swipe
-  loadWorld().then(backfillVisits).finally(() => { route(); if (pendingJoin) { setView('friends'); openJoin(pendingJoin); pendingJoin = null; } else if (!loadPrefs()) openOnboarding(); });
+  loadWorld().then(backfillVisits).finally(() => { route(); initGoals(); if (pendingJoin) { setView('friends'); openJoin(pendingJoin); pendingJoin = null; } else if (!loadPrefs()) openOnboarding(); });
 </script>
 </body>
 </html>

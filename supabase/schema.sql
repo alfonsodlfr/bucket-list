@@ -242,3 +242,36 @@ do $$ declare t text; begin
     end if;
   end loop;
 end $$;
+
+-- ---------- v2: goal titles shared with friends ("Me too", "friends with the same goal"), stamp posts ----------
+alter table public.profiles add column if not exists share_list boolean not null default true;
+
+create table if not exists public.wishes (
+  user_id uuid not null default auth.uid() references public.profiles on delete cascade,
+  entry_id text not null,
+  title text not null check (char_length(trim(title)) between 1 and 120),
+  type text,
+  place text,
+  source_activity uuid references public.activities on delete set null, -- set when added with "Me too"
+  created_at timestamptz not null default now(),
+  primary key (user_id, entry_id)
+);
+alter table public.wishes enable row level security;
+drop policy if exists "see friends' goal titles" on public.wishes;
+create policy "see friends' goal titles" on public.wishes for select to authenticated using (
+  user_id = auth.uid() or (shares_challenge(user_id) and exists (select 1 from profiles p where p.id = user_id and p.share_list)));
+drop policy if exists "add your goals" on public.wishes;
+create policy "add your goals" on public.wishes for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "edit your goals" on public.wishes;
+create policy "edit your goals" on public.wishes for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists "remove your goals" on public.wishes;
+create policy "remove your goals" on public.wishes for delete to authenticated using (user_id = auth.uid());
+
+alter table public.activities drop constraint if exists activities_kind_check;
+alter table public.activities add constraint activities_kind_check check (kind in ('entry_completed', 'challenge_item', 'stamp'));
+
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'wishes') then
+    alter publication supabase_realtime add table public.wishes;
+  end if;
+end $$;
