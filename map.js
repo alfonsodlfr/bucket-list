@@ -81,7 +81,7 @@ const linkedEntries = id => [...new Set([...(visits[id]?.entries || []).map(eid 
 const visitPhotoOf = id => visits[id]?.photo || linkedEntries(id).map(coverOf).find(Boolean) || null;
 
 /* ---------- Completed entries scratch their country off ---------- */
-const ymOf = it => { const d = memDate(it); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+const ymOf = it => { const d = memDate(it); return datePrec(it) === 'year' ? String(d.getFullYear()) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 // Call whenever an entry is completed, reopened, edited or removed. Returns the id of a newly scratched country.
 // Countries scratched this way (auto) are unscratched again when their last linked entry goes; ones you scratched yourself stay.
 function syncVisitFor(it) {
@@ -453,7 +453,7 @@ function linkPicker(c) {
     return `<label class="link-row">
       <input type="checkbox" value="${i.id}" ${visitLinks.has(i.id) ? 'checked' : ''}>
       <i style="${cover ? `background-image:${cssUrl(cover)}` : `background:${toneBg(TYPES[i.type] || TYPES.other)}`}"></i>
-      <span><b>${esc(i.title)}</b><small>${here.has(i.id) ? `In ${esc(c.name)}` : other ? `Also linked to ${esc(WORLD.byId[other].name)}` : fmtDate(memDate(i))}</small></span>
+      <span><b>${esc(i.title)}</b><small>${here.has(i.id) ? `In ${esc(c.name)}` : other ? `Also linked to ${esc(WORLD.byId[other].name)}` : fmtWhen(i)}</small></span>
       <em class="tick"></em>
     </label>`;
   }).join('')}</div>`;

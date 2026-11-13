@@ -45,7 +45,7 @@ async function wrappedData(year, useSample) {
     const act = S.activities.find(a => a.entryId === i.id);
     const reactions = {};
     if (act) for (const r of api.reactionsOf(act.id)) reactions[r.emoji] = (reactions[r.emoji] || 0) + 1;
-    return { id: i.id, title: i.title, type: i.type, place: i.place, lat: i.lat, lng: i.lng, image: coverOf(i), createdAt: i.createdAt, doneAt: memDate(i).getTime(), reactions };
+    return { id: i.id, title: i.title, type: i.type, place: i.place, lat: i.lat, lng: i.lng, image: coverOf(i), createdAt: i.createdAt, doneAt: memDate(i).getTime(), prec: datePrec(i), reactions };
   });
   const sampleAvailable = mine.length < 3;
   const sample = useSample ?? sampleAvailable;
@@ -284,7 +284,7 @@ const SLIDES = [
       const y = 1460 + n * 62, k = seg(t, .55 + n * .07, .85 + n * .07);
       ctx.globalAlpha = k; ctx.fillStyle = '#f0c27a'; ctx.beginPath(); ctx.arc(102, y - 12, 6, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
       Tfit(ctx, e.place, 128, y, WR_W - 128 - 200, { size: 32, weight: 400, alpha: k });
-      T(ctx, new Date(e.doneAt).toLocaleDateString('en', { month: 'short' }).toUpperCase(), WR_W - 90, y, { size: 24, weight: 500, color: '#9a9184', align: 'right', spacing: 4, alpha: k });
+      T(ctx, e.prec === 'year' ? 'YEAR' : new Date(e.doneAt).toLocaleDateString('en', { month: 'short' }).toUpperCase(), WR_W - 90, y, { size: 24, weight: 500, color: '#9a9184', align: 'right', spacing: 4, alpha: k });
     });
   } },
   { id: 'challenges', draw(ctx, t, D) {

@@ -120,6 +120,12 @@ body.in-detail #detailView{display:block;animation:fade .5s var(--ease)}
 .card .img{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;transform:scale(1.02);transition:transform 1.6s var(--ease),filter .8s var(--ease)}
 .card:hover .img{transform:scale(1.08)}
 .card::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to top,rgba(8,7,6,.92) 0%,rgba(8,7,6,.55) 30%,rgba(8,7,6,0) 58%),linear-gradient(to bottom,rgba(8,7,6,.45),rgba(8,7,6,0) 22%)}
+.when-field [data-w]{height:44px;-webkit-appearance:none;appearance:none}
+.when-field select[data-w]{background:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27%3E%3Cpath d=%27M1 1l5 5 5-5%27 fill=%27none%27 stroke=%27%239a9184%27 stroke-width=%271.4%27/%3E%3C/svg%3E") no-repeat right 4px center}
+.when-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.when-prec{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:999px;letter-spacing:.06em}
+.when-prec button{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:5px 10px;border-radius:999px;transition:background .2s,color .2s}
+.when-prec button.on{background:rgba(237,228,214,.12);color:var(--text)}
 .done-now{display:grid;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:12px}
 .switch{display:flex;align-items:center;gap:14px;cursor:pointer;letter-spacing:0;text-transform:none;font-size:14px;color:var(--text)}
 .switch input{position:absolute;opacity:0;width:1px;height:1px}
@@ -1129,7 +1135,11 @@ body.wr-open{overflow:hidden}
     <label>Place<input name="place" placeholder="Tromsø, Norway"></label>
     <div class="full done-now" id="doneNow">
       <label class="switch"><input type="checkbox" name="completed" id="doneToggle"><span class="track"></span><span class="sw-text"><b>I've already done this</b><small>Saves it as completed, with your photos as its story</small></span></label>
-      <label class="done-when" id="doneWhen" hidden>When<input type="date" name="doneDate"></label>
+      <div class="field when-field done-when" id="doneWhen" hidden data-when="done">
+      <div class="when-head"><span>When</span><div class="when-prec" role="group" aria-label="How precise">
+        <button type="button" data-prec="day" class="on">Day</button><button type="button" data-prec="month">Month</button><button type="button" data-prec="year">Year</button></div></div>
+      <input type="date" data-w="day"><input type="month" data-w="month" hidden><select data-w="year" hidden></select>
+    </div>
     </div>
     <label class="full">Cover image <span class="hint-line">Optional. If empty, the first highlight is used.</span>
       <div class="drop" id="drop"><span id="dropText">Choose a photograph</span><input type="file" accept="image/*" id="file"></div>
@@ -1150,7 +1160,11 @@ body.wr-open{overflow:hidden}
       <div class="eyebrow">Completed</div>
       <h2 id="mTitle" style="margin-top:10px">Tell the story</h2>
     </div>
-    <label>When<input name="date" type="date" required></label>
+    <div class="field when-field" id="memWhen" data-when="memory">
+      <div class="when-head"><span>When</span><div class="when-prec" role="group" aria-label="How precise">
+        <button type="button" data-prec="day" class="on">Day</button><button type="button" data-prec="month">Month</button><button type="button" data-prec="year">Year</button></div></div>
+      <input type="date" data-w="day"><input type="month" data-w="month" hidden><select data-w="year" hidden></select>
+    </div>
     <label>With<input name="with" maxlength="120" placeholder="Who was there"></label>
     <label class="full">In one line<input name="highlight" maxlength="160" placeholder="The moment you'll remember first"></label>
     <label class="full">The story<textarea name="story" rows="7" maxlength="6000" placeholder="How it felt, what surprised you, what you'd tell someone about to do it…"></textarea></label>
@@ -1955,10 +1969,63 @@ function refresh() {
 /* ---------- Memories ---------- */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const hasStory = i => !!(i.memory && (i.memory.story || i.memory.highlight || i.memory.photos?.length || coverOf(i)));
-const memDate = i => i.memory?.date ? new Date(i.memory.date + 'T12:00:00') : new Date(i.doneAt || i.createdAt);
+/* Completion dates can be a day (2026-03-14), a month (2026-03) or a whole year (2026).
+   For sorting and Wrapped, a month counts as its 15th and a year as 1 July (never later than now). */
+const whenPrec = str => !str ? 'day' : str.length === 4 ? 'year' : str.length === 7 ? 'month' : 'day';
+const whenTime = str => {
+  const p = whenPrec(str);
+  const t = new Date((p === 'year' ? str + '-07-01' : p === 'month' ? str + '-15' : str) + 'T12:00:00').getTime();
+  return Math.min(t, Date.now());
+};
+const memDate = i => new Date(i.memory?.date ? whenTime(i.memory.date) : (i.doneAt || i.createdAt));
+const datePrec = i => whenPrec(i.memory?.date);
+// style: 'long' 14 March 2026 · 'month' March 2026 (never shows the day) · 'short' Mar 2026 · 'ticket' 14 MAR 2026
+function fmtWhen(i, style = 'long') {
+  const d = memDate(i), p = datePrec(i), y = d.getFullYear(), mon = MONTHS[d.getMonth()];
+  if (p === 'year') return String(y);
+  if (style === 'short') return `${mon.slice(0, 3)} ${y}`;
+  if (style === 'ticket') return (p === 'day' ? `${String(d.getDate()).padStart(2, '0')} ` : '') + `${mon.slice(0, 3).toUpperCase()} ${y}`;
+  if (style === 'month' || p === 'month') return `${mon} ${y}`;
+  return `${d.getDate()} ${mon} ${y}`;
+}
+/* The When picker: Day · Month · Year switch in the label row, one input below */
+const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+function setWhen(el, str) {
+  const p = whenPrec(str), v = str || todayISO();
+  const now = new Date().getFullYear();
+  const sel = el.querySelector('[data-w="year"]');
+  if (!sel.options.length) sel.innerHTML = Array.from({ length: now - 1949 }, (_, k) => `<option>${now - k}</option>`).join('');
+  el.querySelector('[data-w="day"]').max = todayISO();
+  el.querySelector('[data-w="month"]').max = todayISO().slice(0, 7);
+  el.querySelector('[data-w="day"]').value = p === 'day' ? v : (p === 'month' ? v + '-01' : v + '-01-01');
+  el.querySelector('[data-w="month"]').value = v.slice(0, 7).length === 7 ? v.slice(0, 7) : v + '-01';
+  sel.value = v.slice(0, 4);
+  showPrec(el, p);
+}
+function showPrec(el, p) {
+  el.dataset.prec = p;
+  el.querySelectorAll('[data-prec]').forEach(b => { b.classList.toggle('on', b.dataset.prec === p); b.setAttribute('aria-pressed', b.dataset.prec === p); });
+  el.querySelectorAll('[data-w]').forEach(i => { i.hidden = i.dataset.w !== p; });
+}
+function getWhen(el) {
+  const p = el.dataset.prec || 'day', v = el.querySelector(`[data-w="${p}"]`).value;
+  return v || (p === 'year' ? String(new Date().getFullYear()) : todayISO().slice(0, p === 'month' ? 7 : 10));
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.when-prec [data-prec]');
+  if (!b) return;
+  const el = b.closest('[data-when]'), from = el.dataset.prec, to = b.dataset.prec;
+  if (from === to) return;
+  // carry the chosen date across: 14 Mar 2026 -> Mar 2026 -> 2026
+  // …and back again without losing the day or month, as long as they still fit
+  const cur = getWhen(el), day = el.querySelector('[data-w="day"]'), month = el.querySelector('[data-w="month"]');
+  if (cur.length >= 7) month.value = cur.slice(0, 7); else if (!month.value.startsWith(cur)) month.value = cur + '-01';
+  el.querySelector('[data-w="year"]').value = cur.slice(0, 4);
+  if (!day.value.startsWith(cur)) day.value = cur.length === 7 ? cur + '-01' : cur + '-01-01';
+  showPrec(el, to);
+});
 const entryCover = i => i.image || i.highlights?.[0]?.src || null;
 const coverOf = i => i.memory?.photos?.[0] || entryCover(i);
-const fmtDate = d => `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 
 let laneObserver;
 function renderLane() {
@@ -1986,7 +2053,7 @@ function renderLane() {
           ${photos.length > 1 ? `<span class="count">${photos.length} photographs</span>` : ''}
         </div>
         <div class="moment-text">
-          <div class="date"><b>${String(d.getDate()).padStart(2, '0')}</b><span>${MONTHS[d.getMonth()]} ${d.getFullYear()}</span></div>
+          <div class="date">${datePrec(i) === 'year' ? `<b>${d.getFullYear()}</b><span>During the year</span>` : datePrec(i) === 'month' ? `<b>${MONTHS[d.getMonth()].slice(0, 3)}</b><span>${d.getFullYear()}</span>` : `<b>${String(d.getDate()).padStart(2, '0')}</b><span>${MONTHS[d.getMonth()]} ${d.getFullYear()}</span>`}</div>
           <h3>${esc(i.title)}</h3>
           ${i.place ? `<div class="where">${esc(i.place)}</div>` : `<div class="where">${t.label}</div>`}
           ${m.highlight ? `<blockquote>${esc(m.highlight)}</blockquote>` : ''}
@@ -2031,7 +2098,7 @@ function openMemory(it) {
   const m = it.memory || {};
   mform.reset();
   const d = memDate(it);
-  mform.date.value = m.date || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  setWhen($('#memWhen'), m.date || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
   mform.with.value = m.with || '';
   mform.highlight.value = m.highlight || '';
   mform.story.value = m.story || '';
@@ -2047,7 +2114,7 @@ mform.addEventListener('submit', e => {
   if (!it) return mdlg.close();
   const prev = it.memory;
   it.memory = {
-    date: mform.date.value,
+    date: getWhen($('#memWhen')),
     with: mform.with.value.trim(),
     highlight: mform.highlight.value.trim(),
     story: mform.story.value.trim(),
@@ -2075,7 +2142,7 @@ function openStory(it) {
   $('#storyContent').innerHTML = `
     <header class="story-hero" style="background-image:${cover ? cssUrl(cover) + ',' : ''}${toneBg(t)}">
       <div class="inner">
-        <div class="eyebrow">${fmtDate(memDate(it))}${it.place ? ` · ${esc(it.place)}` : ''}</div>
+        <div class="eyebrow">${fmtWhen(it)}${it.place ? ` · ${esc(it.place)}` : ''}</div>
         <h2>${esc(it.title)}</h2>
       </div>
     </header>
@@ -2083,7 +2150,7 @@ function openStory(it) {
       ${m.highlight ? `<blockquote>${esc(m.highlight)}</blockquote>` : ''}
       ${paras}
       <div class="story-meta">
-        <div><span class="eyebrow">Completed</span>${fmtDate(memDate(it))}</div>
+        <div><span class="eyebrow">Completed</span>${fmtWhen(it)}</div>
         ${m.with ? `<div><span class="eyebrow">With</span>${esc(m.with)}</div>` : ''}
         <div><span class="eyebrow">Kind</span>${t.label}</div>
         ${it.description ? `<div style="flex-basis:100%"><span class="eyebrow">Why it was on the list</span>${esc(it.description)}</div>` : ''}
@@ -2249,7 +2316,7 @@ async function composePolaroid(it) {
       let y = -fh / 2 + 35 + ph + 30;
       tt.lines.forEach(l => { y += tt.size * 1.12; ctx.fillText(l, -pw / 2 + 10, y); });
       ctx.font = '400 28px Inter'; ctx.fillStyle = '#7d7262';
-      ctx.fillText([it.place, monthYear(d)].filter(Boolean).join('  ·  '), -pw / 2 + 10, y + 52);
+      ctx.fillText([it.place, fmtWhen(it, 'month')].filter(Boolean).join('  ·  '), -pw / 2 + 10, y + 52);
     }
     ctx.restore();
   };
@@ -2287,7 +2354,7 @@ async function composeCover(it) {
   ctx.fillStyle = '#fff';
   ctx.font = '500 26px Inter';
   tracked(ctx, `ISSUE NO. ${String(issue).padStart(2, '0')}`, 80, 150, 7);
-  tracked(ctx, monthYear(d).toUpperCase(), W - 80, 150, 7, 'right');
+  tracked(ctx, fmtWhen(it, 'month').toUpperCase(), W - 80, 150, 7, 'right');
   ctx.font = '200 210px Inter';
   ctx.letterSpacing = '-8px'; ctx.fillText('The', 70, 360);
   ctx.fillStyle = C.gold; ctx.fillText('List', 70 + ctx.measureText('The ').width, 360);
@@ -2350,7 +2417,7 @@ async function composeTicket(it) {
   let ty = split + 110;
   tt.lines.forEach(l => { ty += tt.size * 1.12; ctx.fillText(l, L, ty); });
   const row = ty + 110, col = (w - 120) / 3;
-  label('DATE', L, row); value(`${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()].slice(0, 3).toUpperCase()} ${d.getFullYear()}`, L, row + 50, 34, col - 20);
+  label('DATE', L, row); value(fmtWhen(it, 'ticket'), L, row + 50, 34, col - 20);
   label('CLASS', L + col, row); value(t.label, L + col, row + 50, 34, col - 20);
   label('STATUS', L + col * 2, row); ctx.fillStyle = '#9c7f45'; ctx.font = '500 34px Inter'; ctx.fillText('✓ Completed', L + col * 2, row + 50);
   // barcode from the title, so each ticket is unique and stable
@@ -2465,7 +2532,7 @@ async function composeStory(it, style) {
   const d = memDate(it);
   ctx.font = '400 30px Inter';
   ctx.fillStyle = 'rgba(255,255,255,.85)';
-  ctx.fillText([it.place ? `📍 ${it.place}` : null, `${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`].filter(Boolean).join('  ·  '), X, y + 56);
+  ctx.fillText([it.place ? `📍 ${it.place}` : null, fmtWhen(it, 'short')].filter(Boolean).join('  ·  '), X, y + 56);
   ctx.restore();
   return cv;
 }
@@ -2733,8 +2800,7 @@ function openForm(it) {
   resetSuggest();
   $('#doneNow').hidden = !!it;
   $('#doneWhen').hidden = true;
-  form.doneDate.value = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-  form.doneDate.max = form.doneDate.value;
+  setWhen($('#doneWhen'), null);
   if (it) {
     form.title.value = it.title;
     form.description.value = it.description || '';
@@ -2923,9 +2989,9 @@ form.addEventListener('submit', e => {
     const it = makeItem(fields);
     // Already done: save it straight away as completed; its photos (cover + highlights) become the story
     if (fd.get('completed')) {
-      const date = fd.get('doneDate') || new Date().toISOString().slice(0, 10);
+      const date = getWhen($('#doneWhen'));
       it.done = true;
-      it.doneAt = Math.min(Date.now(), new Date(date + 'T12:00:00').getTime());
+      it.doneAt = whenTime(date);
       it.memory = { date, with: '', highlight: '', story: '', photos: [] };
     }
     items.push(it);
