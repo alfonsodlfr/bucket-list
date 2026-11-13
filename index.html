@@ -120,6 +120,15 @@ body.in-detail #detailView{display:block;animation:fade .5s var(--ease)}
 .card .img{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;transform:scale(1.02);transition:transform 1.6s var(--ease),filter .8s var(--ease)}
 .card:hover .img{transform:scale(1.08)}
 .card::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to top,rgba(8,7,6,.92) 0%,rgba(8,7,6,.55) 30%,rgba(8,7,6,0) 58%),linear-gradient(to bottom,rgba(8,7,6,.45),rgba(8,7,6,0) 22%)}
+.suggest{position:relative;display:flex;gap:14px;align-items:center;padding:10px;border:1px solid rgba(200,169,106,.35);border-radius:10px;background:rgba(200,169,106,.05);animation:in .4s var(--ease)}
+.sg-img{flex:none;width:84px;height:104px;border-radius:6px;background:var(--surface) center/cover}
+.sg-text{min-width:0;display:grid;gap:4px;font-size:13px;color:var(--text);letter-spacing:0;text-transform:none}
+.sg-text b{font-weight:500}
+.sg-text small{font-size:11px;color:var(--muted);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sg-btns{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.sg-x{position:absolute;top:6px;right:8px;width:26px;height:26px;border-radius:50%;color:var(--muted);font-size:16px}
+.credit-line{font-size:11px;color:var(--muted);margin:-6px 0 18px}
+.card.just-added{box-shadow:0 0 0 2px var(--gold),0 0 40px rgba(200,169,106,.35);transition:box-shadow .6s}
 .card.is-done .img{filter:grayscale(1) brightness(.7);transition:transform 1.6s var(--ease),filter .9s var(--ease)}
 .card.is-done:hover .img{filter:none}
 .top{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center}
@@ -143,14 +152,16 @@ body.in-detail #detailView{display:block;animation:fade .5s var(--ease)}
 .empty p{color:var(--muted);margin:0 0 28px}
 
 /* Dialog */
-dialog{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);padding:0;width:min(620px,92vw);max-height:92vh}
+/* Sheets only scroll vertically: nothing inside may widen them */
+dialog{overflow-x:hidden;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);padding:0;width:min(620px,92vw);max-height:92vh}
 dialog::backdrop{background:rgba(6,5,4,.75);backdrop-filter:blur(6px)}
 dialog[open]{animation:in .5s var(--ease)}
-form{padding:40px;display:grid;gap:22px;grid-template-columns:1fr 1fr}
+form{padding:40px;display:grid;gap:22px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+form>*,.field,label{min-width:0}
 form h2{grid-column:1/-1;font-size:30px}
 .full{grid-column:1/-1}
-label,.field{display:grid;gap:8px;font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
-input,select,textarea{font:inherit;font-size:15px;letter-spacing:0;text-transform:none;color:var(--text);background:transparent;border:0;border-bottom:1px solid var(--line-strong);padding:8px 0;outline:none;width:100%;border-radius:0;transition:border-color .3s}
+label,.field{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+input,select,textarea{min-width:0;max-width:100%;text-overflow:ellipsis;font:inherit;font-size:15px;letter-spacing:0;text-transform:none;color:var(--text);background:transparent;border:0;border-bottom:1px solid var(--line-strong);padding:8px 0;outline:none;width:100%;border-radius:0;transition:border-color .3s}
 input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 select option{background:var(--surface)}
 textarea{resize:vertical;min-height:70px}
@@ -166,7 +177,7 @@ textarea{resize:vertical;min-height:70px}
 .toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:80;padding:12px 22px;border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;font-size:14px;animation:in .5s var(--ease)}
 .toast.out{opacity:0;transition:opacity .5s}
 
-@media (max-width:760px){.hero{grid-template-columns:1fr}.stat{text-align:left}form{grid-template-columns:1fr}}
+@media (max-width:760px){.hero{grid-template-columns:1fr}.stat{text-align:left}form{grid-template-columns:minmax(0,1fr)}}
 /* Memory lane */
 .lane-intro{text-align:center;max-width:560px;margin:20px auto 70px}
 .lane-intro h2{font-size:clamp(34px,4.5vw,52px);font-weight:200;letter-spacing:-.03em;margin:14px 0 14px}
@@ -543,7 +554,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .vote button.on{background:var(--text);color:var(--bg)}
 
 /* Proof + new challenge sheets */
-.proof-form,.ch-form{grid-template-columns:1fr}
+.proof-form,.ch-form{grid-template-columns:minmax(0,1fr)}
 .proof-item{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:16px}
 .proof-item span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);white-space:nowrap}
 .proof-drop{height:300px}
@@ -566,7 +577,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .diff-pick .diff.on{opacity:1}
 .ch-item-row .rm{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);color:var(--muted)}
 .ch-item-add{display:flex;gap:16px;align-items:center;margin-top:8px;letter-spacing:0;text-transform:none}
-.ch-item-add select{width:auto;flex:1;font-size:13px;color:var(--muted)}
+.ch-item-add select{width:auto;flex:1;min-width:0;font-size:13px;color:var(--muted)}
 
 /* ===================== Wrapped ===================== */
 .wrapped-pill{display:inline-flex;align-items:center;gap:10px;margin-top:22px;padding:11px 18px 11px 14px;border-radius:999px;border:1px solid rgba(200,169,106,.45);background:linear-gradient(120deg,rgba(200,169,106,.18),rgba(200,169,106,.04));font-size:13px;letter-spacing:.04em;transition:background .3s}
@@ -710,7 +721,7 @@ body.wr-open{overflow:hidden}
 
 /* Sharing: profile, invite and join sheets */
 #profileDlg,#pasteDlg,#inviteDlg,#joinDlg{width:min(480px,92vw)}
-.profile-form{grid-template-columns:1fr}
+.profile-form{grid-template-columns:minmax(0,1fr)}
 .profile-form h2{margin-top:-8px}
 .profile-form .hint-line{margin-top:-12px}
 .invite,.join{padding:34px 28px 26px;display:grid;gap:14px}
@@ -1095,6 +1106,13 @@ body.wr-open{overflow:hidden}
   <form id="form" autocomplete="off">
     <h2 id="dlgTitle">New entry</h2>
     <label class="full">Title<input name="title" required maxlength="120" placeholder="Sleep under the northern lights"></label>
+    <div class="full suggest" id="suggest" hidden aria-live="polite">
+      <div class="sg-img" id="sgImg"></div>
+      <div class="sg-text"><b>Suggested photo</b><small id="sgCredit"></small>
+        <div class="sg-btns"><button type="button" class="btn solid small" id="sgUse">Use photo</button><button type="button" class="btn small" id="sgNext">Another</button></div>
+      </div>
+      <button type="button" class="sg-x" id="sgNo" aria-label="No thanks">×</button>
+    </div>
     <label class="full">Description<textarea name="description" maxlength="600" placeholder="Why it matters"></textarea></label>
     <label>Type<select name="type" id="typeSelect"></select></label>
     <label>Place<input name="place" placeholder="Tromsø, Norway"></label>
@@ -2630,7 +2648,7 @@ $('#shareClose').onclick = () => shareDlg.close();
 
 function makeItem(d) {
   return { id: crypto.randomUUID(), title: d.title, description: d.description || '', type: d.type,
-    place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null,
+    place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null, imageCredit: d.imageCredit || null,
     highlights: d.highlights || [], done: false, doneAt: null, createdAt: Date.now() };
 }
 
@@ -2701,8 +2719,9 @@ function openForm(it) {
   form.reset();
   pendingHighlights = (it?.highlights || []).map(h => ({ ...h }));
   renderHlList();
-  const isData = it?.image?.startsWith('data:');
-  setImage(isData ? it.image : null);
+  setImage(it?.image || null);
+  pendingCredit = it?.imageCredit || null;
+  resetSuggest();
   if (it) {
     form.title.value = it.title;
     form.description.value = it.description || '';
@@ -2710,7 +2729,6 @@ function openForm(it) {
     form.place.value = it.place || '';
     form.lat.value = it.lat ?? '';
     form.lng.value = it.lng ?? '';
-    form.image.value = it.image && !isData ? it.image : '';
   }
   $('#dlgTitle').textContent = it ? 'Edit entry' : 'New entry';
   $('#saveBtn').textContent = it ? 'Save changes' : 'Add to list';
@@ -2736,8 +2754,74 @@ function compressImage(file, max = 1400, q = 0.82) {
     r.onerror = reject; r.readAsDataURL(file);
   });
 }
-$('#file').onchange = async e => { const f = e.target.files[0]; if (f) { setImage(await compressImage(f)); form.image.value = ''; } };
-form.image.addEventListener('input', () => { if (form.image.value) setImage(null); });
+$('#file').onchange = async e => { const f = e.target.files[0]; if (f) { setImage(await compressImage(f)); form.image.value = ''; pendingCredit = null; hideSuggest(); } };
+form.image.addEventListener('input', () => { if (form.image.value) { setImage(null); pendingCredit = null; hideSuggest(); } });
+
+/* Suggested cover photo, from the title (and place).
+   First a matching built-in photo, then free photos from Wikimedia Commons, credited. */
+let pendingCredit = null, sgList = [], sgIndex = 0, sgTimer = null, sgQuery = '', sgDismissed = false;
+const sgCache = new Map();
+const STOP = new Set('a an the to of in on at for with and or my our your his her their from by into up out over under around through again once more one two three new some this that i we me be is are go going get do make have see visit watch try take learn finally actually really just ever every all day night week year time first last'.split(' '));
+const keywords = t => t.toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
+const hideSuggest = () => { $('#suggest').hidden = true; };
+function resetSuggest() { sgList = []; sgIndex = 0; sgQuery = ''; sgDismissed = false; clearTimeout(sgTimer); hideSuggest(); }
+async function commonsPhotos(q) {
+  if (sgCache.has(q)) return sgCache.get(q);
+  const url = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({ action: 'query', format: 'json', formatversion: 2, origin: '*',
+    generator: 'search', gsrnamespace: 6, gsrlimit: 20, gsrsearch: `${q} filetype:bitmap`,
+    prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiextmetadatafilter: 'Artist|LicenseShortName', iiurlwidth: 1200 });
+  const pages = (await (await fetch(url)).json()).query?.pages || [];
+  const list = pages.sort((a, b) => a.index - b.index).map(p => ({ p, ii: p.imageinfo?.[0] })).filter(({ p, ii }) => ii && ii.mime === 'image/jpeg' && ii.width >= 1000 &&
+      ii.width / ii.height > .55 && ii.width / ii.height < 2.2 && !/\b(map|logo|diagram|chart|flag|coat of arms|plan|sign)\b/i.test(p.title))
+    .slice(0, 8).map(({ ii }) => {
+      const artist = (ii.extmetadata?.Artist?.value || '').replace(/<[^>]+>/g, '').trim().slice(0, 60);
+      const lic = ii.extmetadata?.LicenseShortName?.value || '';
+      return { src: ii.thumburl, credit: `Photo: ${[artist || 'Unknown', lic].filter(Boolean).join(', ')} · Wikimedia Commons` };
+    });
+  sgCache.set(q, list);
+  return list;
+}
+async function findSuggestions(title, place) {
+  const words = keywords(title);
+  if (!words.length) return [];
+  // Built-in photos whose idea shares at least two words (or one long one) with the title
+  const local = IDEAS.filter(i => i.image).map(i => [i, keywords(i.title + ' ' + (i.place || '')).filter(w => words.includes(w))])
+    .filter(([, hit]) => hit.length >= 2 || hit.some(w => w.length >= 6)).map(([i]) => ({ src: i.image, credit: null }));
+  let web = [];
+  try {
+    const city = (place || '').split(',')[0].trim();
+    if (city) web = await commonsPhotos(`${words.join(' ')} ${city}`);
+    if (web.length < 3) web = [...web, ...await commonsPhotos(words.join(' '))];
+  } catch { /* offline: built-in matches only */ }
+  const seen = new Set();
+  return [...local, ...web].filter(x => x.src && !seen.has(x.src) && seen.add(x.src));
+}
+function showSuggestion() {
+  const x = sgList[sgIndex];
+  if (!x) return hideSuggest();
+  $('#sgImg').style.backgroundImage = `url("${x.src}")`;
+  $('#sgCredit').textContent = x.credit || 'From the ideas collection';
+  $('#sgNext').hidden = sgList.length < 2;
+  $('#suggest').hidden = false;
+}
+async function maybeSuggest() {
+  if (sgDismissed || pendingImage || form.image.value.trim()) return hideSuggest();
+  const title = form.title.value.trim(), place = form.place.value.trim();
+  const q = keywords(title).join(' ') + '|' + place;
+  if (keywords(title).length === 0) return hideSuggest();
+  if (q === sgQuery) return;
+  sgQuery = q;
+  const list = await findSuggestions(title, place);
+  if (q !== sgQuery || pendingImage) return; // typed on, or picked a photo meanwhile
+  sgList = list; sgIndex = 0;
+  showSuggestion();
+}
+const suggestSoon = () => { clearTimeout(sgTimer); sgTimer = setTimeout(maybeSuggest, 650); };
+form.title.addEventListener('input', suggestSoon);
+form.place.addEventListener('change', suggestSoon);
+$('#sgNext').onclick = () => { sgIndex = (sgIndex + 1) % sgList.length; showSuggestion(); };
+$('#sgUse').onclick = () => { const x = sgList[sgIndex]; if (!x) return; setImage(x.src); pendingCredit = x.credit; form.image.value = ''; hideSuggest(); };
+$('#sgNo').onclick = () => { sgDismissed = true; hideSuggest(); };
 
 $('#locate').onclick = () => {
   if (!navigator.geolocation) return alert('Geolocation is not available.');
@@ -2792,6 +2876,7 @@ function openEntry(it) {
     </header>
     <div class="entry-body">
       ${it.description ? `<p class="lead">${esc(it.description)}</p>` : ''}
+      ${it.imageCredit ? `<p class="credit-line">${esc(it.imageCredit)}</p>` : ''}
       <div class="entry-actions">
         ${it.done
           ? `<button class="btn solid" data-act="story" data-id="${it.id}">${hasStory(it) ? 'Story' : 'Write story'}</button>`
@@ -2824,6 +2909,7 @@ form.addEventListener('submit', e => {
     title, description: fd.get('description').trim(), type: fd.get('type'), place: fd.get('place').trim(),
     lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng,
     image: pendingImage || fd.get('image').trim() || null,
+    imageCredit: pendingImage && !pendingImage.startsWith('data:') ? pendingCredit : null, // own photos need no credit
     highlights: pendingHighlights.map(h => ({ ...h, caption: h.caption.trim() })),
   };
   const backup = JSON.stringify(items);
@@ -2832,7 +2918,21 @@ form.addEventListener('submit', e => {
   try { save(); } catch { items = JSON.parse(backup); return alert('Storage is full. Try a smaller photo or an image URL.'); }
   const wasEdit = !!editingId;
   dlg.close();
-  if (wasEdit) refresh(); else setView('list');
+  if (wasEdit) refresh();
+  else {
+    // A new entry must be visible: clear any filter that would hide it, then point at it
+    const it = items.at(-1);
+    if (filter.type !== 'all' && filter.type !== it.type) filter.type = 'all';
+    if (filter.status === 'done') filter.status = 'all';
+    setView('list');
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`.card[data-id="${it.id}"]`);
+      if (!card) return;
+      card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      card.classList.add('just-added');
+      setTimeout(() => card.classList.remove('just-added'), 2400);
+    });
+  }
   toast(wasEdit ? 'Saved' : 'Added to your list');
 });
 
