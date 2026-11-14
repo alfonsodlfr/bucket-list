@@ -520,12 +520,27 @@ function lightboxSrc(src, html = '') {
 let friendsTab = 'feed';
 let feedCache = [];
 // Signed out: one card explaining how friends work, instead of an empty feed
-const welcomeCard = () => `<div class="empty social-welcome">
-    <h2>Challenge your friends</h2>
-    <p>Start a challenge, send the link, and race each other through your goals, with photo proof and a live leaderboard. All it takes is a name.</p>
-    <div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>
+const welcomeCard = tab => tab === 'feed' ? `<div class="empty social-welcome">
+    <h2>See what your friends get done</h2>
+    <p>When friends complete something, it shows up here. React to it, or add it to your own list with “Me too”.</p>
     <p class="hint-line">Your photos and stories stay on your phone. Friends in your challenges see your goal titles, so you can spot shared dreams.</p>
+  </div>` : `<div class="empty social-welcome">
+    <h2>Challenge your friends</h2>
+    <p>Pick a few goals and a timeframe, send the link, and race each other with photo proof and a live leaderboard. All it takes is a name.</p>
+    <div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>
   </div>`;
+/* "Add friends": friends are the people you share a challenge with, so adding one means sending a challenge link */
+function openAddFriends() {
+  const open = ME ? S.challenges.filter(c => api.status(c) !== 'ended' && api.membersOf(c.id).includes(ME)) : [];
+  $('#addFriendsBody').innerHTML = `
+    <div class="eyebrow">Add friends</div>
+    <h2>Friends join you through a challenge</h2>
+    <p class="hint-line">Send someone a challenge link. Once they join, you'll see each other's completions here and spot goals you share.</p>
+    ${open.length ? `<div class="ch-pick"><span class="eyebrow">Send the link to</span>${open.map(c => `<button class="create-opt" data-invite="${c.id}"><span class="ico">🏁</span><span><b>${esc(c.title)}</b><small>${api.membersOf(c.id).length} in · ${daysLeft(c)}</small></span></button>`).join('')}</div>` : ''}
+    <button class="create-opt" data-new-ch><span class="ico">＋</span><span><b>${open.length ? 'Start a new challenge' : 'Start a challenge'}</b><small>Pick goals and a timeframe, then share the link</small></span></button>
+    <button class="create-opt" data-join-link><span class="ico">⇢</span><span><b>Join with a link</b><small>A friend sent you an invite</small></span></button>`;
+  $('#addFriendsDlg').showModal();
+}
 function renderSocialChrome() {
   if (typeof currentView !== 'undefined' && currentView === 'friends' && !detail) renderFriendsShell();
 }
@@ -536,7 +551,10 @@ function renderFriendsShell() {
   const me = ME && api.profile(ME);
   $('#friendRoster').innerHTML = (me ? `<button class="roster-p" data-g="passport">${avatar(ME, 34)}<small>You</small></button>` : '') +
     api.friends().map(f => `<span class="roster-p">${avatar(f.id, 34)}<small>${esc(f.name.split(' ')[0])}</small></span>`).join('');
-  if (!ME) { $('#feed').innerHTML = welcomeCard(); $('#challengeList').innerHTML = welcomeCard(); return; }
+  $('#friendsActions').innerHTML = friendsTab === 'feed'
+    ? `<button class="btn solid" data-add-friends>Add friends</button>`
+    : `<button class="link-quiet" data-join-link>Join with a link</button><button class="btn solid" data-new-ch>New challenge</button>`;
+  if (!ME) { $('#feed').innerHTML = welcomeCard('feed'); $('#challengeList').innerHTML = welcomeCard('challenges'); return; }
   if (friendsTab === 'feed') renderFeed(); else renderChallenges();
 }
 async function renderFeed(highlightNew = false) {
@@ -545,7 +563,7 @@ async function renderFeed(highlightNew = false) {
   if (currentView !== 'friends' || friendsTab !== 'feed') return;
   if (!ME) return;
   $('#feed').innerHTML = feedCache.length ? feedCache.map(a => post(activityView(a), highlightNew && !before.has(a.id))).join('')
-    : `<div class="empty"><h2>Quiet for now</h2><p>${api.friends().length ? 'Complete something from your list and it will appear here for your friends.' : 'Your friends\' completions show up here once they join one of your challenges.'}</p>${api.friends().length ? '' : '<div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>'}</div>`;
+    : `<div class="empty"><h2>Quiet for now</h2><p>${api.friends().length ? 'Complete something from your list and it will appear here for your friends.' : 'Your friends\' completions show up here once they join one of your challenges.'}</p></div>`;
 }
 function post(a, isNew) {
   if (a.kind === 'stamp') return stampPost(a, isNew);
@@ -873,7 +891,9 @@ document.addEventListener('click', e => {
   const t = e.target;
   const ftab = t.closest('[data-ftab]');
   if (ftab) { friendsTab = ftab.dataset.ftab; renderFriendsShell(); return; }
+  if (t.closest('#addFriendsDlg [data-new-ch], #addFriendsDlg [data-join-link], #addFriendsDlg [data-invite]')) $('#addFriendsDlg').close();
   if (t.closest('[data-new-ch]')) return requireProfile('Pick a name for your challenges. Friends will see it on the leaderboard.').then(openNewChallenge, () => {});
+  if (t.closest('[data-add-friends]')) return openAddFriends();
   if (t.closest('[data-join-link]')) return openPaste();
   const mt = t.closest('[data-metoo]');
   if (mt) return meToo(mt.dataset.metoo);

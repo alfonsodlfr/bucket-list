@@ -266,11 +266,38 @@ function initMapInteractions() {
       requestAnimationFrame(() => { clampVB(); applyVB(); });
     }
   });
-  $('#mapSearch').addEventListener('change', e => {
-    const q = e.target.value.trim().toLowerCase();
-    const c = WORLD.countries.find(c => c.name.toLowerCase() === q) || WORLD.countries.find(c => namesFor(c).some(n => n.startsWith(q)));
-    if (c) { openDrawer(c.id); zoomTo(c.id); e.target.value = ''; e.target.blur(); }
+  // Country search with suggestions (a datalist barely shows on iPhone)
+  const input = $('#mapSearch'), sug = $('#countrySug');
+  let hits = [], sel = 0;
+  const fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const showSug = () => {
+    const q = fold(input.value.trim());
+    if (!q) { sug.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
+    const starts = [], has = [];
+    for (const c of WORLD.countries) {
+      const ns = namesFor(c).map(fold);
+      if (ns.some(n => n.startsWith(q) || n.split(/[\s-]/).some(w => w.startsWith(q)))) starts.push(c);
+      else if (ns.some(n => n.includes(q))) has.push(c);
+    }
+    // An exact name or alias (uk, usa, holland) goes first, then names starting with it
+    const exact = c => namesFor(c).map(fold).includes(q) ? 0 : fold(c.name).startsWith(q) ? 1 : 2;
+    hits = [...starts.sort((a, b) => exact(a) - exact(b) || a.name.localeCompare(b.name)), ...has].slice(0, 6); sel = 0;
+    sug.innerHTML = hits.length ? hits.map((c, k) => `<button type="button" role="option" class="${k === sel ? 'on' : ''}" data-cid="${c.id}"><span>${flagOf(c.iso2) || '◌'}</span><span>${esc(c.name)}</span><small>${visits[c.id] ? '✓ Visited' : esc(c.continent)}</small></button>`).join('')
+      : `<div class="none">No country called “${esc(input.value.trim())}”</div>`;
+    sug.hidden = false; input.setAttribute('aria-expanded', 'true');
+  };
+  const pick = id => { input.value = ''; sug.hidden = true; input.blur(); openDrawer(id); zoomTo(id); };
+  input.addEventListener('input', showSug);
+  input.addEventListener('focus', showSug);
+  input.addEventListener('keydown', e => {
+    if (sug.hidden || !hits.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length; sug.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === sel)); }
+    if (e.key === 'Enter') { e.preventDefault(); pick(hits[sel].id); }
+    if (e.key === 'Escape') { sug.hidden = true; }
   });
+  // pointerdown so the pick lands before the input loses focus
+  sug.addEventListener('pointerdown', e => { const b = e.target.closest('[data-cid]'); if (b) { e.preventDefault(); pick(b.dataset.cid); } });
+  input.addEventListener('blur', () => setTimeout(() => { sug.hidden = true; }, 150));
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawerId && !document.querySelector('dialog[open]')) closeDrawer(); });
 }
 

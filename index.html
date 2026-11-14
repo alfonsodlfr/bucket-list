@@ -191,7 +191,10 @@ textarea{resize:vertical;min-height:70px}
 .drop.has-img span{background:rgba(8,7,6,.6);padding:6px 14px;border-radius:999px;color:var(--text)}
 .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:12px;margin-top:8px}
 
-.toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:80;padding:12px 22px;border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;font-size:14px;animation:in .5s var(--ease)}
+/* A quiet status message, not a control: no outline, no pill, no uppercase; a soft panel with a dot */
+.toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;max-width:min(420px,calc(100vw - 32px));padding:11px 16px 11px 14px;border-radius:12px;background:rgba(32,30,27,.96);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 12px 34px rgba(0,0,0,.5);font-size:13.5px;line-height:1.35;color:var(--text);pointer-events:none;animation:toastIn .4s var(--ease)}
+.toast::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,8px)}}
 .toast.out{opacity:0;transition:opacity .5s}
 
 @media (max-width:760px){.hero{grid-template-columns:1fr}.stat{text-align:left}form{grid-template-columns:minmax(0,1fr)}}
@@ -301,6 +304,13 @@ body:not([data-view="list"]) .hero,body:not([data-view="list"]) .hero + div{disp
 .map-title b{font-weight:200;color:var(--gold)}
 #mapSub{margin:0;color:var(--muted);font-size:14px}
 .map-tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.map-search-wrap{position:relative}
+.country-sug{position:absolute;left:auto;right:0;top:calc(100% + 6px);z-index:20;width:max(100%,250px);max-width:calc(100vw - 32px);padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.country-sug button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;text-align:left;font-size:14px}
+.country-sug button.on,.country-sug button:hover{background:rgba(237,228,214,.07)}
+.country-sug button span:first-child{font-size:18px;width:22px;text-align:center}
+.country-sug small{margin-left:auto;font-size:11px;color:var(--muted)}
+.country-sug .none{padding:10px;font-size:13px;color:var(--muted)}
 .map-search{background:transparent;border:0;border-bottom:1px solid var(--line-strong);color:var(--text);font:inherit;font-size:14px;padding:8px 0;width:190px;outline:none}
 .map-search:focus{border-color:var(--gold)}
 .map-frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#16130f,#0a0908)}
@@ -774,6 +784,8 @@ body.wr-open{overflow:hidden}
 .join-none h2{font-size:24px;margin-bottom:8px}
 .join-note{color:var(--muted);margin:0}
 .friends-actions{display:flex;align-items:center;gap:14px}
+.add-friends .create-opt{width:100%}
+.add-friends .ch-pick{display:grid;gap:8px}
 .social-welcome .hint-line{display:block;margin-top:22px}
 .ch-invite{margin-top:22px}
 .board-solo{margin:-4px 0 12px}
@@ -795,8 +807,9 @@ body.wr-open{overflow:hidden}
 .focus-plus:hover{background:var(--gold);color:var(--bg)}
 .g-ring{--s:46px;flex:none;position:relative;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--gold) var(--p),rgba(237,228,214,.12) 0)}
 .g-ring::before{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--surface)}
-.g-ring>span{position:relative;text-align:center;font-size:calc(var(--s) * .3);font-weight:400;line-height:1}
-.g-ring small{display:block;font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.g-ring>span{position:relative;display:grid;justify-items:center;text-align:center;font-size:calc(var(--s) * .3);font-weight:400;line-height:1}
+.g-ring.long>span{font-size:calc(var(--s) * .24)}
+.g-ring small{display:block;font-size:min(7px,calc(var(--s) * .16));letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:2px}
 .ch-alert{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;text-align:left;width:100%;border:1px solid rgba(220,140,90,.45);background:linear-gradient(120deg,rgba(200,119,74,.2),rgba(200,169,106,.05));font-size:14px;color:var(--text)}
 .ch-alert .flag-ico{font-size:20px}
 .ch-alert>span{flex:none}
@@ -831,14 +844,14 @@ body.wr-open{overflow:hidden}
 .focus-pill{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 14px 10px 10px;margin:0 0 22px;border-radius:14px;border:1px solid rgba(200,169,106,.3);background:rgba(200,169,106,.06)}
 .focus-pill span:not(.g-ring){flex:1;display:grid;gap:2px}
 .focus-pill b{font-weight:500;color:var(--gold);font-size:13px}
-.focus-pill small{font-size:12px;color:var(--muted)}
+.focus-pill>span:not(.g-ring) small{font-size:12px;color:var(--muted)}
 .focus-pill em{font-style:normal;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .best{margin:0 0 26px;display:grid;gap:10px}
 .best-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .best-status{font-size:13px;color:var(--muted)}.best-status.gold{color:var(--gold)}
 .months{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
-.months i{height:30px;border-radius:5px;background:rgba(237,228,214,.06);display:grid;place-items:end center;padding-bottom:4px;font-style:normal}
-.months i span{font-size:9px;color:var(--muted)}
+.months i{height:30px;border-radius:5px;background:rgba(237,228,214,.06);display:grid;place-items:center;font-style:normal;line-height:1}
+.months i span{font-size:10px;color:var(--muted);line-height:1}
 .months i.ok{background:rgba(200,169,106,.32)}.months i.ok span{color:var(--text)}
 .months i.pk{background:var(--gold)}.months i.pk span{color:#14110f;font-weight:500}
 .months i.now{outline:1.5px solid var(--text);outline-offset:2px}
@@ -1040,7 +1053,8 @@ body.wr-open{overflow:hidden}
   .map-head{gap:16px;margin-bottom:16px}
   .map-title{font-size:30px}
   .map-tools{width:100%;gap:12px}
-  .map-search{flex:1;width:auto;min-width:0}
+  .map-search-wrap{flex:1;min-width:0}
+  .map-search{width:100%}
   .map-frame{margin:0 -16px;border-radius:0;border-left:0;border-right:0}
   /* Scrolling past the map: vertical swipes scroll the page, sideways swipes pan the map.
      Full drag + pinch lives in the full-screen map. */
@@ -1229,7 +1243,7 @@ body.wr-open{overflow:hidden}
           <button class="chip" data-mapfilter="visited">Visited</button>
           <button class="chip" data-mapfilter="list">On my list</button>
         </div>
-        <input class="map-search" id="mapSearch" list="countryNames" placeholder="Find a country…">
+        <div class="map-search-wrap"><input class="map-search" id="mapSearch" placeholder="Find a country…" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="countrySug"><div class="country-sug" id="countrySug" role="listbox" hidden></div></div>
         <button class="btn solid" data-act="share-map">Share map</button>
       </div>
     </div>
@@ -1275,7 +1289,7 @@ body.wr-open{overflow:hidden}
         <button data-ftab="feed" class="active">Feed</button>
         <button data-ftab="challenges">Challenges</button>
       </div>
-      <div class="friends-actions"><button class="link-quiet" data-join-link>Join with a link</button><button class="btn solid" data-new-ch>New challenge</button></div>
+      <div class="friends-actions" id="friendsActions"></div>
     </div>
     <div id="feedPane"><div class="feed" id="feed"></div></div>
     <div id="challengesPane" hidden><div id="challengeList"></div></div>
@@ -1440,6 +1454,8 @@ body.wr-open{overflow:hidden}
     <button class="link-quiet" id="inviteDone">Done</button>
   </div>
 </dialog>
+
+<dialog id="addFriendsDlg" aria-label="Add friends"><div class="g-sheet add-friends" id="addFriendsBody"></div></dialog>
 
 <dialog id="joinDlg" aria-label="Join a challenge"><div class="join" id="joinBody"></div></dialog>
 
@@ -2040,33 +2056,59 @@ function closeSheet() {
 // User-initiated close: go back in history when the sheet pushed an entry, so Back doesn't reopen it
 const dismissSheet = () => (history.state?.app ? history.back() : exitDetail());
 // Drag `panel` down by any element matching `handleSel`; past the threshold, call `dismiss`
-function dragToDismiss(panel, handleSel, dismiss) {
-  let y0 = null, dy = 0, t0 = 0;
-  panel.addEventListener('pointerdown', e => {
-    if (!useSheet() || !e.target.closest(handleSel) || e.target.closest('button,a,input')) return;
-    y0 = e.clientY; dy = 0; t0 = performance.now();
-    panel.setPointerCapture(e.pointerId);
-    panel.style.transition = 'none';
-  });
-  panel.addEventListener('pointermove', e => {
-    if (y0 === null) return;
-    dy = Math.max(0, e.clientY - y0);
-    panel.style.transform = `translateY(${dy}px)`;
-  });
-  const end = () => {
-    if (y0 === null) return;
-    y0 = null;
+/* Drag a sheet down to dismiss it, like native iOS sheets.
+   Touch: from anywhere in the sheet while its content is scrolled to the top (or from the handle at any time).
+   Upward drags scroll as usual, sideways drags scroll their row. Mouse/pen: the handle only. */
+const NO_DRAG = 'input,textarea,select,canvas,[data-no-drag],.can-frame,.ob-card,.ck-stepper,input[type=range],.rail-track,.pick-row,.opts,.chips,.qa-chips,.months';
+function dragToDismiss(panel, handleSel, dismiss, scroller = panel) {
+  let y0 = null, x0 = 0, dy = 0, t0 = 0, active = false, fromHandle = false, blockClick = false;
+  const begin = () => { active = true; panel.style.transition = 'none'; };
+  const move = y => { dy = Math.max(0, y - y0); panel.style.transform = `translateY(${dy}px)`; };
+  const finish = () => {
+    if (!active) { y0 = null; return; }
+    active = false; y0 = null;
     const fast = dy / Math.max(1, performance.now() - t0) > .6; // a flick also dismisses
     panel.style.transition = '';
-    if (dy > 120 || (fast && dy > 30)) {
+    if (dy > 6) blockClick = true; // the lift at the end of a drag isn't a tap
+    if (dy > 110 || (fast && dy > 30)) {
       panel.style.transform = 'translateY(110%)';
       setTimeout(() => { dismiss(); panel.style.transform = ''; }, 220);
     } else panel.style.transform = '';
   };
-  panel.addEventListener('pointerup', end);
-  panel.addEventListener('pointercancel', end);
+  // Touch
+  panel.addEventListener('touchstart', e => {
+    if (!useSheet() || e.touches.length > 1) { y0 = null; return; }
+    fromHandle = !!e.target.closest(handleSel);
+    if (!fromHandle && e.target.closest(NO_DRAG)) { y0 = null; return; }
+    const t = e.touches[0]; y0 = t.clientY; x0 = t.clientX; dy = 0; t0 = performance.now(); active = false;
+  }, { passive: true });
+  panel.addEventListener('touchmove', e => {
+    if (y0 === null) return;
+    const t = e.touches[0], ddy = t.clientY - y0, ddx = t.clientX - x0;
+    if (!active) {
+      if (Math.abs(ddx) > 10 && Math.abs(ddx) > Math.abs(ddy)) { y0 = null; return; } // sideways: not ours
+      if (ddy < -6) { y0 = null; return; } // upwards: let the sheet scroll
+      if (ddy < 6) return;
+      if (!fromHandle && scroller.scrollTop > 0) { y0 = null; return; } // content first scrolls back to the top
+      begin(); y0 = t.clientY - ddy; t0 = performance.now();
+    }
+    e.preventDefault();
+    move(t.clientY);
+  }, { passive: false });
+  panel.addEventListener('touchend', finish);
+  panel.addEventListener('touchcancel', finish);
+  panel.addEventListener('click', e => { if (blockClick) { blockClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  // Mouse and pen: the handle
+  panel.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch' || !useSheet() || !e.target.closest(handleSel) || e.target.closest('button,a,input')) return;
+    y0 = e.clientY; dy = 0; t0 = performance.now(); begin();
+    panel.setPointerCapture(e.pointerId);
+  });
+  panel.addEventListener('pointermove', e => { if (e.pointerType !== 'touch' && active && y0 !== null) move(e.clientY); });
+  panel.addEventListener('pointerup', e => { if (e.pointerType !== 'touch') finish(); });
+  panel.addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') finish(); });
 }
-dragToDismiss($('#sheetPanel'), '.grab', dismissSheet);
+dragToDismiss($('#sheetPanel'), '.grab', dismissSheet, $('#sheetBody'));
 $('#sheet').addEventListener('click', e => { if (e.target.classList.contains('sheet-backdrop')) dismissSheet(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && detail?.sheet && !document.querySelector('dialog[open]')) dismissSheet(); });
 // Rotating or resizing past the breakpoint: move an open sheet to the full page, or back

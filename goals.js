@@ -55,7 +55,7 @@ function ringHtml(it, size = 46) {
     const left = Math.max(0, daysTo(it.focus.until)), span = Math.max(1, (new Date(it.focus.until) - (it.focus.since || it.createdAt)) / DAYMS);
     p = Math.min(1, Math.max(.04, 1 - left / span)); big = left; small = left === 1 ? 'day' : 'days';
   } else { p = 0; big = '–'; small = ''; }
-  return `<span class="g-ring" style="--p:${p * 100}%;--s:${size}px"><span>${big}<small>${small}</small></span></span>`;
+  return `<span class="g-ring ${String(big).length > 2 ? 'long' : ''}" style="--p:${p * 100}%;--s:${size}px"><span>${big}<small>${small}</small></span></span>`;
 }
 function focusSub(it) {
   const parts = [];
