@@ -402,6 +402,29 @@ const STAMPS = [
   { id: 'champion', group: 'Friends', icon: '🏆', label: 'Champion', line: 'You won a challenge.', big: true, test: () => typeof myWins === 'function' && myWins() >= 1 },
   { id: 'inspire', group: 'Friends', icon: '❋', label: 'Inspiration', line: 'Three friends added one of your goals to their list.', test: () => typeof inspiredCount === 'function' && inspiredCount() >= 3 },
 ];
+// How to earn each stamp, and progress toward it where there's something to count
+const HOW = {
+  first: ['Complete any goal on your list.', () => [doneItems().length, 1]],
+  c5: ['Scratch off 5 countries on your map.', () => [visitedIds().length, 5]],
+  c10: ['Scratch off 10 countries on your map.', () => [visitedIds().length, 10]],
+  c25: ['Scratch off 25 countries on your map.', () => [visitedIds().length, 25]],
+  c50: ['Scratch off 50 countries on your map.', () => [visitedIds().length, 50]],
+  k3: ['Visit countries on 3 different continents.', () => [continents().size, 3]],
+  k6: ['Visit countries on all 6 inhabited continents.', () => [continents().size, 6]],
+  newyear: ['Scratch off a country you visited this year. Earned again each year.', null],
+  g10: ['Complete 10 goals.', () => [doneItems().length, 10]],
+  g25: ['Complete 25 goals.', () => [doneItems().length, 25]],
+  g50: ['Complete 50 goals.', () => [doneItems().length, 50]],
+  g100: ['Complete 100 goals.', () => [doneItems().length, 100]],
+  allround: ['Complete a Trip, an Activity, a Food, a Culture and a Learning goal.', () => [['trip', 'activity', 'food', 'culture', 'learning'].filter(t => doneItems().some(i => i.type === t)).length, 5]],
+  inseason: ['Complete a seasonal goal (northern lights, cherry blossoms…) during its peak months.', null],
+  longgame: ['Complete a goal that has been on your list for more than two years.', null],
+  distance: ['Reach the target of a progress goal, like “Read 12 books”.', null],
+  plan: ['Plan your year with at least 3 goals, then complete every one of them.', () => { const p = planFor(new Date().getFullYear()); return p && p.ids.length >= 3 ? [planDone(p), p.ids.length] : null; }],
+  years3: ['Complete at least one goal in three years running.', () => [yearsInARow(), 3]],
+  champion: ['Finish first in a challenge with friends.', null],
+  inspire: ['Have 3 friends add one of your goals to their list with “Me too”.', () => [typeof inspiredCount === 'function' ? inspiredCount() : 0, 3]],
+};
 const stampKey = (s, y) => s.yearly ? `${s.id}-${y}` : s.id;
 const earned = () => jsonGet('bucketlist.stamps', {});
 // Check after anything that could earn one; new stamps get their moment one at a time
@@ -439,7 +462,23 @@ function showNextStamp() {
 }
 function stampHtml(s, at, n) {
   const r = [-8, 5, -3, 7, -6, 4, -2, 6][n % 8];
-  return `<div class="stamp ${at ? '' : 'off'} ${s.group === 'Travel' ? '' : 'sq'}" style="--r:${at ? r : 0}deg" title="${esc(s.line)}"><span><b>${s.icon}</b><small>${esc(s.label)}</small></span></div>`;
+  return `<button class="stamp ${at ? '' : 'off'} ${s.group === 'Travel' ? '' : 'sq'}" style="--r:${at ? r : 0}deg" data-stamp="${s.id}" aria-label="${esc(s.label)}"><span><b>${s.icon}</b><small>${esc(s.label)}</small></span></button>`;
+}
+// Tap a stamp: what it's for, how to earn it, and how close you are
+function openStamp(id) {
+  const s = STAMPS.find(x => x.id === id), got = earned();
+  const at = s.yearly ? Object.keys(got).filter(k => k.startsWith(s.id + '-')).sort().map(k => got[k]).pop() : got[s.id];
+  const [how, prog] = HOW[s.id] || ['', null];
+  const p = !at && prog ? prog() : null;
+  const when = at && new Date(at);
+  $('#stampInfoBody').innerHTML = `
+    <div class="stamp ${at ? '' : 'off'} ${s.group === 'Travel' ? '' : 'sq'} stamp-solo" style="--r:${at ? -6 : 0}deg"><span><b>${s.icon}</b><small>${esc(s.label)}</small></span></div>
+    <div class="eyebrow ${at ? 'gold-eye' : ''}">${at ? `Earned ${when.getDate()} ${MONTHS[when.getMonth()].slice(0, 3)} ${when.getFullYear()}` : 'Not earned yet'} · ${esc(s.group)}</div>
+    <h2>${esc(at ? s.line : s.label)}</h2>
+    <p class="hint-line">${esc(how)}</p>
+    ${p ? `<div class="stamp-prog"><div class="bar-thin"><i style="width:${Math.min(100, p[0] / p[1] * 100)}%"></i></div><small>${Math.min(p[0], p[1])} of ${p[1]}</small></div>` : ''}
+    ${s.big ? `<p class="hint-line stamp-note">${at ? 'Shared' : 'When you earn it, it\'s shared'} with your friends in the feed.</p>` : ''}`;
+  $('#stampInfoDlg').showModal();
 }
 function openPassport() {
   const got = earned(), y = new Date().getFullYear();
@@ -535,6 +574,7 @@ document.addEventListener('click', e => {
   if (a === 'discover') { $('#nearDlg').close(); return openDiscover(g.dataset.c); }
 }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches?.('.focus-row')) e.target.click(); });
+document.addEventListener('click', e => { const st = e.target.closest('[data-stamp]'); if (st) openStamp(st.dataset.stamp); });
 $('#stampDlg').addEventListener('close', () => setTimeout(showNextStamp, 400));
 
 // Called once everything is loaded

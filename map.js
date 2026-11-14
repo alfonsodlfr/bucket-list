@@ -77,8 +77,49 @@ const listCountries = () => new Set(items.filter(i => !i.done && entryCountries.
 const entriesIn = id => items.filter(i => entryCountries.get(i.id) === id);
 // Completed entries the user linked to a visited country (skipping any that were since deleted)
 const linkedEntries = id => [...new Set([...(visits[id]?.entries || []).map(eid => items.find(i => i.id === eid)), ...items.filter(i => i.done && entryCountries.get(i.id) === id)])].filter(Boolean);
-// The visit's own photo, else the cover of its first linked story
-const visitPhotoOf = id => visits[id]?.photo || linkedEntries(id).map(coverOf).find(Boolean) || null;
+// The visit's own photo, else the cover of its first linked story, else a photo of the country
+const visitPhotoOf = id => visits[id]?.photo || linkedEntries(id).map(coverOf).find(Boolean) || countryPhoto(id);
+
+/* ---------- Country photos ----------
+   Each country's Wikivoyage banner (Wikidata P948): a hand-picked landscape for every country page.
+   Looked up once for all countries, then the image URLs for the ones you've visited; both are cached. */
+const CP_KEY = 'bucketlist.countryPhotos.v1';
+let countryPhotos = (() => { try { return JSON.parse(localStorage.getItem(CP_KEY)) || { files: null, urls: {} }; } catch { return { files: null, urls: {} }; } })();
+let cpLoading = null;
+const countryPhoto = id => {
+  const u = countryPhotos.urls[id];
+  if (u === undefined && countryPhotos.files?.[id]) loadCountryPhotos([id]);
+  return u ? u.src : null;
+};
+const countryPhotoCredit = id => countryPhotos.urls[id]?.credit || null;
+async function loadCountryPhotos(ids) {
+  if (cpLoading) return cpLoading;
+  cpLoading = (async () => {
+    if (!countryPhotos.files) {
+      const q = 'SELECT ?iso ?b WHERE { ?c wdt:P298 ?iso; wdt:P948 ?b. }';
+      const r = await (await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q))).json();
+      countryPhotos.files = {};
+      for (const x of r.results.bindings) countryPhotos.files[x.iso.value] ||= decodeURIComponent(x.b.value.split('/').pop());
+    }
+    const need = ids.filter(id => countryPhotos.files[id] && countryPhotos.urls[id] === undefined);
+    for (let k = 0; k < need.length; k += 40) {
+      const batch = need.slice(k, k + 40);
+      const titles = batch.map(id => 'File:' + countryPhotos.files[id]);
+      const url = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({ action: 'query', format: 'json', formatversion: 2, origin: '*', prop: 'imageinfo', iiprop: 'url|extmetadata', iiextmetadatafilter: 'Artist|LicenseShortName', iiurlwidth: 2400, titles: titles.join('|') });
+      const pages = (await (await fetch(url)).json()).query?.pages || [];
+      const norm = t => t.replace(/_/g, ' ');
+      for (const id of batch) {
+        const p = pages.find(x => norm(x.title) === norm('File:' + countryPhotos.files[id]));
+        const ii = p?.imageinfo?.[0];
+        if (!ii) { countryPhotos.urls[id] = null; continue; }
+        const artist = (ii.extmetadata?.Artist?.value || '').replace(/<[^>]+>/g, '').trim().slice(0, 50);
+        countryPhotos.urls[id] = { src: ii.thumburl, credit: `Photo: ${[artist || 'Unknown', ii.extmetadata?.LicenseShortName?.value].filter(Boolean).join(', ')} · Wikivoyage` };
+      }
+    }
+    try { localStorage.setItem(CP_KEY, JSON.stringify(countryPhotos)); } catch { /* full: keep them for this session */ }
+  })().catch(e => console.warn('country photos', e)).finally(() => { cpLoading = null; if (!$('#mapView').hidden) renderMap(); });
+  return cpLoading;
+}
 
 /* ---------- Completed entries scratch their country off ---------- */
 const ymOf = it => { const d = memDate(it); return datePrec(it) === 'year' ? String(d.getFullYear()) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
@@ -113,7 +154,6 @@ let mapBuilt = false;
 function buildMap() {
   const g = $('#countriesG');
   g.innerHTML = WORLD.countries.map(c => `<path d="${c.d}" data-id="${c.id}"></path>`).join('');
-  $('#countryNames').innerHTML = WORLD.countries.map(c => `<option value="${esc(c.name)}">`).join('');
   mapBuilt = true;
 }
 async function renderMap() {
@@ -144,6 +184,9 @@ async function renderMap() {
   $('#mapNoun').textContent = visitedIds.length === 1 ? 'country' : 'countries';
   $('#mapSub').textContent = `${Math.round(visitedIds.length / UN_COUNTRIES * 100)}% of the world · ${conts.size} of 6 continents · ${onList.size} on your list`;
   document.querySelectorAll('[data-mapfilter]').forEach(b => b.classList.toggle('active', b.dataset.mapfilter === mapFilter));
+  const missing = visitedIds.filter(id => countryPhotos.urls[id] === undefined && (!countryPhotos.files || countryPhotos.files[id]));
+  if (missing.length && !cpLoading) loadCountryPhotos(missing);
+  if ($('#mapSearch').options.length < 2) fillCountries();
   renderMapStrip(visitedIds, onList);
   if (drawerId) renderDrawer();
   if (typeof checkStamps === 'function') checkStamps();
@@ -154,7 +197,8 @@ function renderMapStrip(visitedIds, onList) {
   const list = [...onList].filter(id => !visits[id]).sort((a, b) => WORLD.byId[a].name.localeCompare(WORLD.byId[b].name));
   const tile = (id, sub, photo) => {
     const c = WORLD.byId[id];
-    return `<button class="ctile ${photo ? '' : 'foil-tile'}" data-country="${id}" style="${photo ? `background-image:${cssUrl(photo)}` : ''}">
+    const pending = !photo && visits[id] && cpLoading;
+    return `<button class="ctile ${photo ? '' : pending ? 'foil-tile loading' : 'foil-tile'}" data-country="${id}" style="${photo ? `background-image:${cssUrl(photo)}` : ''}">
       <span class="flag">${flagOf(c.iso2)}</span><span class="nm">${esc(c.name)}</span><span class="sub">${sub}</span></button>`;
   };
   const showVis = mapFilter !== 'list', showList = mapFilter !== 'visited';
@@ -203,6 +247,7 @@ function svgPoint(e) {
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
 let drag = null;
+let fillCountries = () => {};
 function initMapInteractions() {
   const svg = $('#worldSvg'), tip = $('#mapTip');
   svg.addEventListener('wheel', e => {
@@ -266,38 +311,16 @@ function initMapInteractions() {
       requestAnimationFrame(() => { clampVB(); applyVB(); });
     }
   });
-  // Country search with suggestions (a datalist barely shows on iPhone)
-  const input = $('#mapSearch'), sug = $('#countrySug');
-  let hits = [], sel = 0;
-  const fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const showSug = () => {
-    const q = fold(input.value.trim());
-    if (!q) { sug.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
-    const starts = [], has = [];
-    for (const c of WORLD.countries) {
-      const ns = namesFor(c).map(fold);
-      if (ns.some(n => n.startsWith(q) || n.split(/[\s-]/).some(w => w.startsWith(q)))) starts.push(c);
-      else if (ns.some(n => n.includes(q))) has.push(c);
-    }
-    // An exact name or alias (uk, usa, holland) goes first, then names starting with it
-    const exact = c => namesFor(c).map(fold).includes(q) ? 0 : fold(c.name).startsWith(q) ? 1 : 2;
-    hits = [...starts.sort((a, b) => exact(a) - exact(b) || a.name.localeCompare(b.name)), ...has].slice(0, 6); sel = 0;
-    sug.innerHTML = hits.length ? hits.map((c, k) => `<button type="button" role="option" class="${k === sel ? 'on' : ''}" data-cid="${c.id}"><span>${flagOf(c.iso2) || '◌'}</span><span>${esc(c.name)}</span><small>${visits[c.id] ? '✓ Visited' : esc(c.continent)}</small></button>`).join('')
-      : `<div class="none">No country called “${esc(input.value.trim())}”</div>`;
-    sug.hidden = false; input.setAttribute('aria-expanded', 'true');
+  // Find a country: a native dropdown (the iPhone shows its picker wheel), every country A–Z, visited ones marked
+  const sel = $('#mapSearch');
+  fillCountries = () => {
+    if (!WORLD) return;
+    sel.innerHTML = '<option value="">Find a country…</option>' + [...WORLD.countries].sort((a, b) => a.name.localeCompare(b.name))
+      .map(c => `<option value="${c.id}">${flagOf(c.iso2) ? flagOf(c.iso2) + ' ' : ''}${esc(c.name)}${visits[c.id] ? '  ✓' : ''}</option>`).join('');
   };
-  const pick = id => { input.value = ''; sug.hidden = true; input.blur(); openDrawer(id); zoomTo(id); };
-  input.addEventListener('input', showSug);
-  input.addEventListener('focus', showSug);
-  input.addEventListener('keydown', e => {
-    if (sug.hidden || !hits.length) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length; sug.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === sel)); }
-    if (e.key === 'Enter') { e.preventDefault(); pick(hits[sel].id); }
-    if (e.key === 'Escape') { sug.hidden = true; }
-  });
-  // pointerdown so the pick lands before the input loses focus
-  sug.addEventListener('pointerdown', e => { const b = e.target.closest('[data-cid]'); if (b) { e.preventDefault(); pick(b.dataset.cid); } });
-  input.addEventListener('blur', () => setTimeout(() => { sug.hidden = true; }, 150));
+  fillCountries();
+  sel.addEventListener('focus', fillCountries); // refresh the ✓ marks
+  sel.addEventListener('change', () => { const id = sel.value; if (!id) return; sel.value = ''; sel.blur(); openDrawer(id); zoomTo(id); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawerId && !document.querySelector('dialog[open]')) closeDrawer(); });
 }
 
@@ -351,7 +374,8 @@ function renderDrawer() {
   } else if (v) {
     const photo = visitPhotoOf(c.id);
     const linked = linkedEntries(c.id);
-    main = `${photo ? `<div class="visit-photo" style="background-image:${cssUrl(photo)}"></div>` : ''}
+    const own = visits[c.id]?.photo || linkedEntries(c.id).map(coverOf).find(Boolean);
+    main = `${photo ? `<div class="visit-photo" style="background-image:${cssUrl(photo)}"></div>${!own && countryPhotoCredit(c.id) ? `<p class="photo-credit">${esc(countryPhotoCredit(c.id))}</p>` : ''}` : ''}
       <div class="visit-meta"><span class="seal">✓ Scratched</span>${v.date ? `<span>${monthLabel(v.date)}</span>` : ''}</div>
       ${v.comment ? `<blockquote class="visit-comment">${esc(v.comment)}</blockquote>` : ''}
       ${linked.length ? `<div class="linked"><div class="eyebrow">Completed here</div>${linked.map(i => `
@@ -402,7 +426,7 @@ $('#drawer').addEventListener('click', e => {
   }
   else if (a === 'edit-visit') { scratchState = 'edit'; visitLinks = new Set(visits[c.id]?.entries || []); renderDrawer(); }
   else if (a === 'cancel-visit') { scratchState = null; renderDrawer(); }
-  else if (a === 'unvisit' && confirm(`Unscratch ${c.name}?`)) { delete visits[c.id]; saveVisits(); scratchState = null; renderMap(); }
+  else if (a === 'unvisit') uiConfirm({ eyebrow: 'Unscratch', title: `Unscratch ${c.name}?`, body: 'Its date, photo and note are removed from your map. Your entries stay.', ok: 'Unscratch', danger: true }).then(ok => { if (!ok) return; delete visits[c.id]; saveVisits(); scratchState = null; renderMap(); });
   else if (a === 'discover') openDiscover(c.id);
   else if (a === 'share-country') openCountryShare(c.id);
   else if (a === 'add-entry') { openForm(); form.place.value = c.name; form.type.value = 'trip'; }
@@ -507,7 +531,7 @@ function mountVisitForm(c) {
     visits[c.id] = { date: f.date.value, comment: f.comment.value.trim(), photo: visitPhoto, entries: [...visitLinks].filter(id => items.some(i => i.id === id)), at: prev?.at || Date.now() };
     try { saveVisits(); } catch {
       if (prev) visits[c.id] = prev; else delete visits[c.id];
-      return alert('Browser storage is full. Try a smaller photograph.');
+      return uiNotice('Storage is full', 'Try a smaller photograph.');
     }
     scratchState = null;
     renderMap().then(() => {

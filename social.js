@@ -909,11 +909,8 @@ document.addEventListener('click', e => {
   const add = t.closest('[data-ch-add]');
   if (add) {
     if (!ME) return;
-    const title = prompt('New goal');
-    if (title?.trim()) {
-      const d = (prompt('Difficulty: easy, medium or hard', 'medium') || 'medium').toLowerCase();
-      api.addItem(add.dataset.chAdd, { title: title.trim(), difficulty: POINTS[d] ? d : 'medium' });
-    }
+    uiConfirm({ eyebrow: 'Add a goal', title: 'A new goal for everyone', ok: 'Add goal', field: { label: 'Goal', placeholder: 'e.g. Sleep under the stars', choices: ['easy', 'medium', 'hard'], labels: ['Easy 10', 'Medium 25', 'Hard 50'], choice: 'medium' } })
+      .then(r => { if (r) api.addItem(add.dataset.chAdd, { title: r.value, difficulty: POINTS[r.choice] ? r.choice : 'medium' }); });
     return;
   }
   const rb = t.closest('[data-react]');

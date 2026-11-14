@@ -190,6 +190,7 @@ textarea{resize:vertical;min-height:70px}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .drop.has-img span{background:rgba(8,7,6,.6);padding:6px 14px;border-radius:999px;color:var(--text)}
 .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:12px;margin-top:8px}
+.form-actions .mem-del{margin-right:auto;color:#d98a7c}
 
 /* A quiet status message, not a control: no outline, no pill, no uppercase; a soft panel with a dot */
 .toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;max-width:min(420px,calc(100vw - 32px));padding:11px 16px 11px 14px;border-radius:12px;background:rgba(32,30,27,.96);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 12px 34px rgba(0,0,0,.5);font-size:13.5px;line-height:1.35;color:var(--text);pointer-events:none;animation:toastIn .4s var(--ease)}
@@ -305,13 +306,7 @@ body:not([data-view="list"]) .hero,body:not([data-view="list"]) .hero + div{disp
 #mapSub{margin:0;color:var(--muted);font-size:14px}
 .map-tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .map-search-wrap{position:relative}
-.country-sug{position:absolute;left:auto;right:0;top:calc(100% + 6px);z-index:20;width:max(100%,250px);max-width:calc(100vw - 32px);padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.5)}
-.country-sug button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;text-align:left;font-size:14px}
-.country-sug button.on,.country-sug button:hover{background:rgba(237,228,214,.07)}
-.country-sug button span:first-child{font-size:18px;width:22px;text-align:center}
-.country-sug small{margin-left:auto;font-size:11px;color:var(--muted)}
-.country-sug .none{padding:10px;font-size:13px;color:var(--muted)}
-.map-search{background:transparent;border:0;border-bottom:1px solid var(--line-strong);color:var(--text);font:inherit;font-size:14px;padding:8px 0;width:190px;outline:none}
+.map-search{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:22px!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239a9184' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 2px center;border:0;border-bottom:1px solid var(--line-strong);color:var(--text);font:inherit;font-size:14px;padding:8px 0;width:190px;outline:none}
 .map-search:focus{border-color:var(--gold)}
 .map-frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#16130f,#0a0908)}
 #worldSvg{display:block;width:100%;height:auto;aspect-ratio:1000/440;touch-action:none;user-select:none;cursor:grab}
@@ -350,6 +345,8 @@ body:not([data-view="list"]) .hero,body:not([data-view="list"]) .hero + div{disp
 .ctile .nm{font-size:16px;font-weight:400}
 .ctile .sub{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-top:4px}
 .foil-tile{background:linear-gradient(135deg,#3b3329,#7a6a4e 40%,#c8b48a 50%,#6e5f45 62%,#2e2821)}
+.ctile.loading{animation:breathe 1.6s ease-in-out infinite}
+.photo-credit{font-size:10px;color:var(--muted);margin:6px 0 0;text-align:right}
 .muted-note{color:var(--muted);font-size:14px;margin:0;grid-column:1/-1}
 
 /* Drawer */
@@ -738,6 +735,16 @@ body.wr-open{overflow:hidden}
 #createDlg{width:min(440px,92vw)}
 .create{padding:28px 22px 24px;display:grid;gap:10px}
 .create .eyebrow{margin:0 4px 8px}
+.ui-sheet{text-align:center;justify-items:center;gap:12px;padding-top:36px}
+.ui-sheet h2{font-size:24px;max-width:340px}
+.ui-sheet .hint-line{max-width:340px}
+.ui-btns{display:grid;gap:4px;width:100%;margin-top:8px;justify-items:center}
+.ui-btns .btn.wide{width:100%}
+.btn.danger{background:#b5584a;border-color:#b5584a;color:#fff}
+.btn.danger:hover{background:#c96655;border-color:#c96655}
+.ui-alt{color:var(--text)}
+.ui-field{width:100%;text-align:left}
+.ui-choices{justify-self:center}
 .qa{display:grid;gap:8px;margin-bottom:6px;padding:0;grid-template-columns:minmax(0,1fr)}
 .qa-row{display:flex;align-items:center;gap:8px;padding:5px 5px 5px 16px;border:1px solid var(--gold);border-radius:999px;background:rgba(200,169,106,.05)}
 .qa-row input{border:0;padding:8px 0;font-size:16px}
@@ -906,6 +913,19 @@ body.wr-open{overflow:hidden}
 .pp-share{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
 .pp-share small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .pp-share .btn{flex:none}
+.stamps .stamp{cursor:pointer;font:inherit;background:none}
+.stamp-info{text-align:center;justify-items:center;padding-top:34px}
+.stamp-info h2{font-size:22px;max-width:320px}
+.stamp-info .hint-line{max-width:320px}
+.stamp-solo{width:110px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;text-align:center;border:2px dashed rgba(200,169,106,.8);color:var(--gold);position:relative;transform:rotate(var(--r,0deg));margin-bottom:6px}
+.stamp-solo::before{content:"";position:absolute;inset:6px;border-radius:50%;border:1px solid rgba(200,169,106,.45)}
+.stamp-solo.sq{border-radius:18px}.stamp-solo.sq::before{border-radius:13px}
+.stamp-solo b{display:block;font-size:34px;font-weight:200;color:var(--text);line-height:1}
+.stamp-solo small{display:block;font-size:8px;letter-spacing:.16em;text-transform:uppercase;margin-top:4px}
+.stamp-solo.off{opacity:.4;border-color:var(--line-strong);color:var(--muted)}
+.stamp-prog{width:100%;max-width:280px;display:grid;gap:6px}
+.stamp-prog small{font-size:12px;color:var(--muted)}
+.stamp-note{font-size:12px!important;opacity:.8}
 .pp-head{display:flex;align-items:center;gap:14px}
 .pp-head h2{font-size:24px}.pp-head small{font-size:12px;color:var(--muted)}
 .pp-group{display:grid;gap:10px;margin-top:4px}
@@ -1243,7 +1263,7 @@ body.wr-open{overflow:hidden}
           <button class="chip" data-mapfilter="visited">Visited</button>
           <button class="chip" data-mapfilter="list">On my list</button>
         </div>
-        <div class="map-search-wrap"><input class="map-search" id="mapSearch" placeholder="Find a country…" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="countrySug"><div class="country-sug" id="countrySug" role="listbox" hidden></div></div>
+        <div class="map-search-wrap"><select class="map-search" id="mapSearch" aria-label="Find a country"><option value="">Find a country…</option></select></div>
         <button class="btn solid" data-act="share-map">Share map</button>
       </div>
     </div>
@@ -1275,7 +1295,6 @@ body.wr-open{overflow:hidden}
       <button class="map-done" data-zoom="exit">Done</button>
       <div class="map-tip" id="mapTip"></div>
     </div>
-    <datalist id="countryNames"></datalist>
     <div id="mapStrip"></div>
   </section>
 
@@ -1366,6 +1385,7 @@ body.wr-open{overflow:hidden}
       <div class="mem-photos" id="memPhotos"></div>
     </div>
     <div class="form-actions">
+      <button type="button" class="link-quiet mem-del" id="mDelete" hidden>Delete memory</button>
       <button type="button" class="btn" id="mSkip">Later</button>
       <button type="submit" class="btn solid">Save memory</button>
     </div>
@@ -1405,10 +1425,13 @@ body.wr-open{overflow:hidden}
   </div>
 </dialog>
 
+<dialog id="uiDlg" aria-label="Confirm"><div class="g-sheet ui-sheet" id="uiBody"></div></dialog>
+
 <dialog id="focusDlg" aria-label="Focus"><div class="g-sheet" id="focusBody"></div></dialog>
 <dialog id="checkinDlg" aria-label="Check in"><div class="g-sheet checkin" id="checkinBody"></div></dialog>
 <dialog id="ritualDlg" aria-label="Your year"><div class="g-sheet ritual" id="ritualBody"></div></dialog>
 <dialog id="stampDlg" aria-label="New stamp"><div class="g-sheet stamp-new" id="stampBody"></div></dialog>
+<dialog id="stampInfoDlg" aria-label="Stamp"><div class="g-sheet stamp-info" id="stampInfoBody"></div></dialog>
 <dialog id="passportDlg" aria-label="Passport"><div class="g-sheet passport" id="passportBody"></div></dialog>
 <dialog id="nearDlg" aria-label="Near you"><div class="g-sheet near" id="nearBody"></div></dialog>
 
@@ -1778,6 +1801,34 @@ $('#createDlg').addEventListener('click', e => {
   else if (a === 'browse') setView('explore');
   else if (a === 'country') { setView('map'); toast('Tap a country to scratch it off'); }
 });
+
+/* In-app confirmations and notices (instead of the browser's confirm/alert/prompt).
+   uiConfirm resolves 'ok', 'alt' (an optional second action) or false. */
+let uiResolve = null;
+function uiConfirm({ eyebrow = '', title, body = '', ok = 'OK', cancel = 'Cancel', danger = false, alt = null, field = null }) {
+  if (uiResolve) uiResolve(false);
+  $('#uiBody').innerHTML = `${eyebrow ? `<div class="eyebrow">${esc(eyebrow)}</div>` : ''}<h2>${esc(title)}</h2>${body ? `<p class="hint-line">${esc(body)}</p>` : ''}
+    ${field ? `<label class="ui-field">${esc(field.label)}<input id="uiInput" maxlength="${field.max || 80}" placeholder="${esc(field.placeholder || '')}" value="${esc(field.value || '')}"></label>${field.choices ? `<div class="seg ui-choices">${field.choices.map((c, k) => `<button type="button" data-ui-choice="${c}" class="${c === field.choice ? 'on' : ''}">${esc(field.labels?.[k] || c)}</button>`).join('')}</div>` : ''}` : ''}
+    <div class="ui-btns">
+      <button type="button" class="btn ${danger ? 'danger' : 'solid'} wide" data-ui="ok">${esc(ok)}</button>
+      ${alt ? `<button type="button" class="link-quiet ui-alt" data-ui="alt">${esc(alt)}</button>` : ''}
+      ${cancel ? `<button type="button" class="link-quiet" data-ui="cancel">${esc(cancel)}</button>` : ''}
+    </div>`;
+  $('#uiDlg').showModal();
+  return new Promise(res => { uiResolve = res; });
+}
+const uiNotice = (title, body) => uiConfirm({ title, body, ok: 'OK', cancel: null });
+$('#uiDlg').addEventListener('click', e => {
+  const ch = e.target.closest('[data-ui-choice]');
+  if (ch) { $('#uiBody').querySelectorAll('[data-ui-choice]').forEach(b => b.classList.toggle('on', b === ch)); return; }
+  const a = e.target.closest('[data-ui]')?.dataset.ui;
+  if (!a) return;
+  const r = uiResolve; uiResolve = null;
+  const value = $('#uiInput')?.value.trim(), choice = $('#uiBody [data-ui-choice].on')?.dataset.uiChoice;
+  $('#uiDlg').close();
+  r?.(a === 'cancel' ? false : $('#uiInput') ? (a === 'ok' && value ? { value, choice } : false) : a);
+});
+$('#uiDlg').addEventListener('close', () => { if (uiResolve) { const r = uiResolve; uiResolve = null; r(false); } });
 
 /* Quick add: just a title. Type, place and photo are guessed, and each can be changed later. */
 const TYPE_HINTS = [
@@ -2279,7 +2330,7 @@ function refresh() {
 
 /* ---------- Memories ---------- */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const hasStory = i => !!(i.memory && (i.memory.story || i.memory.highlight || i.memory.photos?.length || coverOf(i)));
+const hasStory = i => !!(i.memory && (i.memory.story || i.memory.highlight || i.memory.photos?.length || (!i.memory.cleared && coverOf(i))));
 /* Completion dates can be a day (2026-03-14), a month (2026-03) or a whole year (2026).
    For sorting and Wrapped, a month counts as its 15th and a year as 1 July (never later than now). */
 const whenPrec = str => !str ? 'day' : str.length === 4 ? 'year' : str.length === 7 ? 'month' : 'day';
@@ -2416,9 +2467,26 @@ function openMemory(it) {
   memPhotos = [...(m.photos || [])];
   $('#mTitle').textContent = it.title;
   renderMemPhotos();
+  $('#mDelete').hidden = !(m.story || m.highlight || m.with || m.photos?.length);
   mdlg.showModal();
 }
 $('#mSkip').onclick = () => mdlg.close();
+$('#mDelete').onclick = () => { const it = items.find(i => i.id === memId); mdlg.close(); if (it) deleteMemory(it); };
+/* A memory is the story of a completed goal: its words, people and photos. Deleting it keeps the goal completed;
+   the second option removes the whole entry. */
+async function deleteMemory(it) {
+  const r = await uiConfirm({ eyebrow: 'Delete memory', title: `Delete the memory of “${it.title}”?`, body: 'Its story and photos are removed. The goal stays completed on your list.', ok: 'Delete memory', danger: true, alt: 'Remove the whole entry instead' });
+  if (r === 'ok') {
+    it.memory = { date: it.memory?.date, cleared: true }; // keeps when it was done
+    save();
+    if (detail?.kind === 'story') exitDetail();
+    refresh(); toast('Memory deleted');
+  } else if (r === 'alt') {
+    items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it);
+    if (detail?.id === it.id) exitDetail();
+    refresh(); toast('Entry removed');
+  }
+}
 mform.addEventListener('submit', e => {
   e.preventDefault();
   const it = items.find(i => i.id === memId);
@@ -2433,7 +2501,7 @@ mform.addEventListener('submit', e => {
   };
   try { save(); } catch {
     it.memory = prev;
-    return alert('Browser storage is full. Try fewer photographs.');
+    return uiNotice('Storage is full', 'Try fewer or smaller photographs.');
   }
   mdlg.close();
   refresh();
@@ -2466,7 +2534,7 @@ function openStory(it) {
         <div><span class="eyebrow">Kind</span>${t.label}</div>
         ${it.description ? `<div style="flex-basis:100%"><span class="eyebrow">Why it was on the list</span>${esc(it.description)}</div>` : ''}
       </div>
-      <div class="links" style="margin-top:24px;gap:10px"><button class="btn solid" data-act="share" data-id="${it.id}">Share to story</button><button class="btn" data-act="memory" data-id="${it.id}">Edit memory</button><span class="spacer" style="flex:1"></span><button class="link-quiet" data-act="toggle" data-id="${it.id}">Reopen</button><button class="link-quiet" data-act="delete" data-id="${it.id}">Remove</button></div>
+      <div class="links" style="margin-top:24px;gap:10px"><button class="btn solid" data-act="share" data-id="${it.id}">Share to story</button><button class="btn" data-act="memory" data-id="${it.id}">Edit memory</button><span class="spacer" style="flex:1"></span><button class="link-quiet" data-act="delete-memory" data-id="${it.id}">Delete memory</button><button class="link-quiet" data-act="toggle" data-id="${it.id}">Reopen</button><button class="link-quiet" data-act="delete" data-id="${it.id}">Remove</button></div>
     </div>
     ${gallery.length ? `<div class="gallery">${gallery.map((src, n) => `<img src="${esc(src)}" style="--i:${n}" alt="" data-zoom>`).join('')}</div>` : ''}`;
   enterDetail('story', it.id);
@@ -3102,8 +3170,11 @@ document.addEventListener('click', e => {
     openMemory(it);
   } else if (el.dataset.act === 'edit') {
     openForm(it);
-  } else if (el.dataset.act === 'delete' && confirm(`Remove "${it.title}"?`)) {
-    items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it); refresh();
+  } else if (el.dataset.act === 'delete') {
+    uiConfirm({ eyebrow: 'Remove entry', title: `Remove “${it.title}”?`, body: it.done ? 'Its memory and photos go too. This can\'t be undone.' : 'It disappears from your list. This can\'t be undone.', ok: 'Remove', danger: true })
+      .then(ok => { if (!ok) return; items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it); if (detail?.id === it.id) exitDetail(); refresh(); toast('Removed'); });
+  } else if (el.dataset.act === 'delete-memory') {
+    deleteMemory(it);
   }
 });
 
@@ -3336,7 +3407,7 @@ form.addEventListener('submit', e => {
     } else if (it.progress && focusItems().length < MAX_FOCUS) it.focus = { until: null, since: Date.now() }; // progress goals start in focus
     items.push(it);
   }
-  try { save(); } catch { items = JSON.parse(backup); return alert('Storage is full. Try a smaller photo.'); }
+  try { save(); } catch { items = JSON.parse(backup); return uiNotice('Storage is full', 'Try a smaller photo.'); }
   const wasEdit = !!editingId;
   const saved = wasEdit ? items.find(i => i.id === editingId) : items.at(-1);
   // Completed entries scratch their country off the map (and move with it if the place changed)
