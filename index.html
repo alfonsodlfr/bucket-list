@@ -103,13 +103,14 @@ body.in-detail #detailView{display:block;animation:fade .5s var(--ease)}
 .viewswitch button{width:34px;height:30px;border-radius:999px;display:grid;place-items:center;color:var(--muted);transition:all .3s}
 .viewswitch button:hover{color:var(--text)}
 .viewswitch button.active{background:rgba(237,228,214,.12);color:var(--text)}
-.rails{display:grid;gap:44px}
+.rails{display:grid;grid-template-columns:minmax(0,1fr);gap:44px}
+.rail{min-width:0}
 .rail-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
 .rail-head h3{font-size:26px;font-weight:200;letter-spacing:-.02em}
 .rail-head .spacer{flex:1}
 .rail-arrow{width:36px;height:36px;border-radius:50%;border:1px solid var(--line-strong);color:var(--muted);align-self:center;transition:all .3s}
 .rail-arrow:hover{color:var(--text);border-color:var(--text)}
-.rail-track{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(200px,19vw,250px);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 2px;padding-bottom:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rail-track{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(200px,19vw,250px);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 2px;padding-bottom:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;min-width:0;max-width:100%}
 .rail-track::-webkit-scrollbar{display:none}
 .rail-track .card{scroll-snap-align:start}
 
@@ -944,6 +945,38 @@ body.wr-open{overflow:hidden}
 body.ideas-on .make-public{display:block}
 .make-public .switch small{max-width:460px}
 .shared-by{font-size:11px;letter-spacing:.06em;color:var(--gold);margin-top:6px}
+.country-multi{width:100%;height:170px;padding:6px}
+.cbox{display:none}
+/* Phones: a plain field; the invisible native select on top of it opens the system picker (a wheel with ticks on iPhone) */
+@media (pointer:coarse){
+  .cbox{display:flex;align-items:center;justify-content:space-between;min-height:46px;padding:0 2px;border-bottom:1px solid var(--line-strong);color:var(--muted);font-size:16px;letter-spacing:normal;text-transform:none}
+  .cbox::after{content:"";width:12px;height:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239a9184' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat}
+  .cbox-wrap{position:relative}
+  .cbox-wrap .country-multi{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px}
+}
+.cpicked{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.cpicked:empty{display:none}
+.cchip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--line-strong);font-size:13px;color:var(--text);background:rgba(237,228,214,.04)}
+.cchip span{color:var(--muted);font-size:15px;line-height:1}
+.act-main{display:flex;gap:10px;margin-top:22px}
+.act-main .btn{flex:1;min-width:0;white-space:nowrap;padding-left:12px;padding-right:12px}
+.act-quiet{display:flex;justify-content:center;gap:26px;margin-top:14px}
+.act-quiet .link-quiet{white-space:nowrap}
+.more-here{display:grid;gap:8px;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+.more-here .eyebrow{margin-bottom:4px}
+.country-ideas{display:grid;gap:8px;margin-top:12px}
+.ci-head{font-size:12px;color:var(--muted)}
+.sight-sug{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:8px;border:1px solid var(--line);border-radius:10px;background:rgba(237,228,214,.02)}
+.sight-sug i{width:46px;height:46px;flex:none;border-radius:7px;background-size:cover;background-position:center}
+.sight-sug span{flex:1;min-width:0;display:grid;gap:2px}
+.sight-sug b{font-weight:400;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sight-sug small{font-size:11px;color:var(--muted)}
+.sight-sug em{font-style:normal;font-size:20px;color:var(--gold);padding:0 6px}
+.been-here{width:100%;margin:6px 0 4px}
+.visit-ask{display:grid;gap:10px;justify-items:start;padding:18px;border:1px solid rgba(200,169,106,.35);border-radius:12px;background:rgba(200,169,106,.05);animation:in .4s var(--ease)}
+.visit-ask h3{font-size:20px;font-weight:300}
+.visit-ask .hint-line{margin:0}
+.visit-ask-btns{display:flex;gap:10px;width:100%}.visit-ask-btns .btn{flex:1;white-space:nowrap;padding-left:10px;padding-right:10px}
 .pp-head{display:flex;align-items:center;gap:14px}
 .pp-head h2{font-size:24px}.pp-head small{font-size:12px;color:var(--muted)}
 .pp-group{display:grid;gap:10px;margin-top:4px}
@@ -1057,7 +1090,8 @@ body.ideas-on .make-public{display:block}
   .rails{gap:34px}
   .rail-head h3{font-size:22px}
   .rail-arrow{display:none}
-  .rail-track{grid-auto-columns:44vw;gap:10px;margin:0 -16px;padding:0 16px 4px;scroll-padding:0 16px}
+  .rail-track{grid-auto-columns:44vw;gap:10px;margin:0 -20px;padding:0 20px 4px;scroll-padding:0 20px;max-width:none;width:calc(100% + 40px)}
+  #listView{overflow-x:clip}
 
   /* Detail pages */
   .story-hero{height:64vh;min-height:360px}
@@ -1271,7 +1305,7 @@ body.ideas-on .make-public{display:block}
     <div class="map-head">
       <div>
         <div class="eyebrow">The world</div>
-        <h2 class="map-title"><b id="mapCount">0</b> <span id="mapNoun">countries</span> scratched off</h2>
+        <h2 class="map-title"><b id="mapCount">0</b> <span id="mapNoun">countries</span> visited</h2>
         <p id="mapSub"></p>
         <div class="map-links"><button class="link-quiet" data-g="passport">Your passport</button><button class="link-quiet" data-g="near">◎ Near me</button></div>
       </div>
@@ -1304,7 +1338,7 @@ body.ideas-on .make-public{display:block}
         <g id="pinsG"></g>
       </svg>
       <div class="map-legend">
-        <span><i style="background:linear-gradient(135deg,#36332d,#4a463e)"></i>To scratch</span>
+        <span><i style="background:linear-gradient(135deg,#36332d,#4a463e)"></i>Not yet</span>
         <span><i style="background:#ddc9a3"></i>Visited</span>
         <span><i style="background:#3a3224;box-shadow:inset 0 0 0 1px #c8a96a"></i>On my list</span>
       </div>
@@ -1363,9 +1397,13 @@ body.ideas-on .make-public{display:block}
       </div>
     </div>
     <label>Type<select name="type" id="typeSelect"></select></label>
-    <label>Place<input name="place" placeholder="Tromsø, Norway"></label>
+    <div class="full field country-pick">Countries <span class="hint-line">Optional. Pick one or more; they go on your map.</span>
+      <div class="cbox-wrap"><div class="cbox" aria-hidden="true">Choose countries…</div><select multiple id="formCountries" class="country-multi" aria-label="Countries"></select></div>
+      <div class="cpicked" id="formPicked"></div>
+      <div class="country-ideas" id="formIdeas" hidden></div>
+    </div>
     <div class="full done-now" id="doneNow">
-      <label class="switch"><input type="checkbox" name="completed" id="doneToggle"><span class="track"></span><span class="sw-text"><b>I've already done this</b><small>Saves it as completed, with your photos as its story</small></span></label>
+      <label class="switch"><input type="checkbox" name="completed" id="doneToggle"><span class="track"></span><span class="sw-text"><b>I've already done this</b><small>Saves it as completed, with your photos as its memory</small></span></label>
       <div class="field when-field done-when" id="doneWhen" hidden data-when="done">
       <div class="when-head"><span>When</span><div class="when-prec" role="group" aria-label="How precise">
         <button type="button" data-prec="day" class="on">Day</button><button type="button" data-prec="month">Month</button><button type="button" data-prec="year">Year</button></div></div>
@@ -1392,7 +1430,7 @@ body.ideas-on .make-public{display:block}
   <form id="mform" autocomplete="off">
     <div class="full">
       <div class="eyebrow">Completed</div>
-      <h2 id="mTitle" style="margin-top:10px">Tell the story</h2>
+      <h2 id="mTitle" style="margin-top:10px">Your memory</h2>
     </div>
     <div class="field when-field" id="memWhen" data-when="memory">
       <div class="when-head"><span>When</span><div class="when-prec" role="group" aria-label="How precise">
@@ -1400,8 +1438,12 @@ body.ideas-on .make-public{display:block}
       <input type="date" data-w="day"><input type="month" data-w="month" hidden><select data-w="year" hidden></select>
     </div>
     <label>With<input name="with" maxlength="120" placeholder="Who was there"></label>
+    <div class="full field country-pick">Where it happened <span class="hint-line">Adjust if it ended up somewhere else.</span>
+      <div class="cbox-wrap"><div class="cbox" aria-hidden="true">Choose countries…</div><select multiple id="memCountries" class="country-multi" aria-label="Countries"></select></div>
+      <div class="cpicked" id="memPicked"></div>
+    </div>
     <label class="full">In one line<input name="highlight" maxlength="160" placeholder="The moment you'll remember first"></label>
-    <label class="full">The story<textarea name="story" rows="7" maxlength="6000" placeholder="How it felt, what surprised you, what you'd tell someone about to do it…"></textarea></label>
+    <label class="full">What happened<textarea name="story" rows="7" maxlength="6000" placeholder="How it felt, what surprised you, what you'd tell someone about to do it…"></textarea></label>
     <div class="full field">Photographs <span class="hint-line">The first photo becomes the cover. Up to 8.</span>
       <div class="mem-photos" id="memPhotos"></div>
     </div>
@@ -1470,7 +1512,7 @@ body.ideas-on .make-public{display:block}
     <button class="create-opt" data-create="entry"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></span><span><b>Full entry with details</b><small>Description, photos, already done…</small></span></button>
     <button class="create-opt" data-create="idea"><span class="ico"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg></span><span><b>Give me an idea</b><small>One suggestion at a time, picked for you</small></span></button>
     <button class="create-opt" data-create="browse"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></span><span><b>Browse all ideas</b><small>The whole collection, by category</small></span></button>
-    <button class="create-opt" data-create="country"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.3 3.8 5.2 3.8 8.5s-1.2 6.2-3.8 8.5c-2.6-2.3-3.8-5.2-3.8-8.5s1.2-6.2 3.8-8.5"/></svg></span><span><b>Scratch off a country</b><small>Mark somewhere you've already been</small></span></button>
+    <button class="create-opt" data-create="country"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.3 3.8 5.2 3.8 8.5s-1.2 6.2-3.8 8.5c-2.6-2.3-3.8-5.2-3.8-8.5s1.2-6.2 3.8-8.5"/></svg></span><span><b>Mark a country visited</b><small>Mark somewhere you've already been</small></span></button>
   </div>
 </dialog>
 
@@ -1741,7 +1783,7 @@ function card(i, n) {
         ${mini}
         ${cardProgress(i)}
         <div class="actions">
-          <button class="primary" data-act="${i.done ? 'story' : 'toggle'}" data-id="${i.id}">${i.done ? (hasStory(i) ? 'Story' : 'Write story') : 'Complete'}</button>
+          <button class="primary" data-act="${i.done ? 'story' : 'toggle'}" data-id="${i.id}">${i.done ? (hasStory(i) ? 'Memory' : 'Write memory') : 'Complete'}</button>
           ${i.done ? `<button data-act="toggle" data-id="${i.id}">Reopen</button>` : `<button data-act="edit" data-id="${i.id}">Edit</button>`}
           <button data-act="delete" data-id="${i.id}">Remove</button>
         </div>
@@ -1824,7 +1866,7 @@ $('#createDlg').addEventListener('click', e => {
   if (a === 'entry') openForm();
   else if (a === 'idea') openIdea();
   else if (a === 'browse') setView('explore');
-  else if (a === 'country') { setView('map'); toast('Tap a country to scratch it off'); }
+  else if (a === 'country') { setView('map'); toast('Tap a country, then “I\'ve been here”'); }
 });
 
 /* In-app confirmations and notices (instead of the browser's confirm/alert/prompt).
@@ -2422,7 +2464,7 @@ function renderLane() {
   const done = items.filter(i => i.done).sort((a, b) => memDate(b) - memDate(a));
   const written = done.filter(hasStory).length;
   $('#laneSub').textContent = done.length
-    ? `${done.length} ${done.length === 1 ? 'promise' : 'promises'} kept${written < done.length ? `, ${done.length - written} still waiting for their story` : ''}.`
+    ? `${done.length} ${done.length === 1 ? 'promise' : 'promises'} kept${written < done.length ? `, ${done.length - written} still waiting for their memory` : ''}.`
     : 'Nothing completed yet. When you complete an entry, its story will live here.';
 
   let lastYear = null;
@@ -2451,8 +2493,8 @@ function renderLane() {
           ${m.with ? `<div class="with">With ${esc(m.with)}</div>` : ''}
           <div class="links">
             ${hasStory(i)
-              ? `<button class="primary" data-act="story" data-id="${i.id}">Story</button><button data-act="share" data-id="${i.id}">Share</button><button data-act="memory" data-id="${i.id}">Edit</button>`
-              : `<button class="primary" data-act="memory" data-id="${i.id}">Write story</button>`}
+              ? `<button class="primary" data-act="story" data-id="${i.id}">Memory</button><button data-act="share" data-id="${i.id}">Share</button><button data-act="memory" data-id="${i.id}">Edit</button>`
+              : `<button class="primary" data-act="memory" data-id="${i.id}">Write memory</button>`}
           </div>
         </div>
       </article>`;
@@ -2495,6 +2537,7 @@ function openMemory(it) {
   mform.highlight.value = m.highlight || '';
   mform.story.value = m.story || '';
   memPhotos = [...(m.photos || [])];
+  fillCountryPicker($('#memCountries'), WORLD ? countriesForEntry(it) : []);
   $('#mTitle').textContent = it.title;
   renderMemPhotos();
   $('#mDelete').hidden = !(m.story || m.highlight || m.with || m.photos?.length);
@@ -2505,7 +2548,7 @@ $('#mDelete').onclick = () => { const it = items.find(i => i.id === memId); mdlg
 /* A memory is the story of a completed goal: its words, people and photos. Deleting it keeps the goal completed;
    the second option removes the whole entry. */
 async function deleteMemory(it) {
-  const r = await uiConfirm({ eyebrow: 'Delete memory', title: `Delete the memory of “${it.title}”?`, body: 'Its story and photos are removed. The goal stays completed on your list.', ok: 'Delete memory', danger: true, alt: 'Remove the whole entry instead' });
+  const r = await uiConfirm({ eyebrow: 'Delete memory', title: `Delete the memory of “${it.title}”?`, body: 'Its words and photos are removed. The goal stays completed on your list.', ok: 'Delete memory', danger: true, alt: 'Remove the whole entry instead' });
   if (r === 'ok') {
     it.memory = { date: it.memory?.date, cleared: true }; // keeps when it was done
     save();
@@ -2530,13 +2573,15 @@ mform.addEventListener('submit', e => {
     story: mform.story.value.trim(),
     photos: memPhotos,
   };
+  applyCountries(it, pickedOf($('#memCountries')));
   try { save(); } catch {
     it.memory = prev;
     return uiNotice('Storage is full', 'Try fewer or smaller photographs.');
   }
   mdlg.close();
+  const moved = typeof syncVisitFor === 'function' ? syncVisitFor(it) : null;
   refresh();
-  toast('Memory saved');
+  toast(moved ? `Memory saved · ${WORLD.byId[moved].name} added to your map` : 'Memory saved');
   if (typeof onEntryUpdated === 'function') onEntryUpdated(it);
 });
 
@@ -2565,7 +2610,8 @@ function openStory(it) {
         <div><span class="eyebrow">Kind</span>${t.label}</div>
         ${it.description ? `<div style="flex-basis:100%"><span class="eyebrow">Why it was on the list</span>${esc(it.description)}</div>` : ''}
       </div>
-      <div class="links" style="margin-top:24px;gap:10px"><button class="btn solid" data-act="share" data-id="${it.id}">Share to story</button><button class="btn" data-act="memory" data-id="${it.id}">Edit memory</button><span class="spacer" style="flex:1"></span><button class="link-quiet" data-act="delete-memory" data-id="${it.id}">Delete memory</button><button class="link-quiet" data-act="toggle" data-id="${it.id}">Reopen</button><button class="link-quiet" data-act="delete" data-id="${it.id}">Remove</button></div>
+      <div class="act-main"><button class="btn solid" data-act="share" data-id="${it.id}">Share</button><button class="btn" data-act="memory" data-id="${it.id}">Edit memory</button></div>
+      <div class="act-quiet"><button class="link-quiet" data-act="delete-memory" data-id="${it.id}">Delete memory</button><button class="link-quiet" data-act="toggle" data-id="${it.id}">Reopen</button><button class="link-quiet" data-act="delete" data-id="${it.id}">Remove</button></div>
     </div>
     ${gallery.length ? `<div class="gallery">${gallery.map((src, n) => `<img src="${esc(src)}" style="--i:${n}" alt="" data-zoom>`).join('')}</div>` : ''}`;
   enterDetail('story', it.id);
@@ -3150,6 +3196,88 @@ function syncPublic(it, want) {
     .catch(e => { if (e?.message === 'cancelled') toast('Not made public: it needs your name'); else if (e?.message !== 'offline') toast('Couldn\'t make it public. Try again online.'); });
   else if (it.public) { delete it.public; save(); unpublishIdea(it.id).catch(() => {}); toast('Removed from Explore'); }
 }
+/* Country picker: a native multi-select (an iPhone shows its picker wheel with ticks), the picks as chips below */
+function fillCountryPicker(sel, ids = []) {
+  if (!WORLD) { sel.dataset.want = JSON.stringify(ids); return; }
+  if (sel.options.length < 2) sel.innerHTML = [...WORLD.countries].sort((a, b) => a.name.localeCompare(b.name))
+    .map(c => `<option value="${c.id}">${flagOf(c.iso2) ? flagOf(c.iso2) + ' ' : ''}${esc(c.name)}</option>`).join('');
+  const want = new Set(ids);
+  for (const o of sel.options) o.selected = want.has(o.value);
+  renderPicked(sel);
+}
+const pickedOf = sel => sel.options.length ? [...sel.selectedOptions].map(o => o.value) : JSON.parse(sel.dataset.want || '[]');
+function renderPicked(sel) {
+  const box = sel.closest('.country-pick').querySelector('.cpicked'), ids = pickedOf(sel);
+  sel.parentElement.querySelector('.cbox').textContent = ids.length ? 'Add or remove countries…' : 'Choose countries…';
+  box.innerHTML = ids.map(id => { const c = WORLD?.byId[id]; return c ? `<button type="button" class="cchip" data-unpick="${id}">${flagOf(c.iso2)} ${esc(c.name)} <span aria-hidden="true">×</span></button>` : ''; }).join('');
+  sel.classList.toggle('has-picks', ids.length > 0);
+  sel.dataset.summary = ids.length ? '' : 'none';
+}
+document.addEventListener('change', e => { if (e.target.matches?.('.country-multi')) { renderPicked(e.target); if (e.target.id === 'formCountries') { suggestSoon(); renderCountryIdeas(); } } });
+document.addEventListener('click', e => {
+  const x = e.target.closest('[data-unpick]'); if (!x) return;
+  const sel = x.closest('.country-pick').querySelector('.country-multi');
+  [...sel.options].find(o => o.value === x.dataset.unpick).selected = false;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+});
+const setFormCountries = ids => { fillCountryPicker($('#formCountries'), ids); renderCountryIdeas(); };
+
+/* More for the same countries: well-known sights (Wikidata, ranked by how many Wikipedias cover them; sights.json),
+   skipping anything already on the list. "Visit the Eiffel Tower" in France suggests the Louvre, Orsay, Versailles… */
+let SIGHTS = null;
+const loadSights = () => SIGHTS ? Promise.resolve(SIGHTS) : fetch('sights.json').then(r => r.json()).then(d => (SIGHTS = d)).catch(() => ({}));
+const sightCore = t => t.toLowerCase().replace(/^(visit|see|explore|dive|relax on|wander through|walk through|walk|browse|see a show at|watch a game at)\s+(the\s+)?/, '').replace(/[’']/g, "'").trim();
+function sightsFor(ids, extraTitles = [], n = 3) {
+  if (!SIGHTS) return [];
+  const have = [...items.map(i => i.title), ...extraTitles].map(t => t.toLowerCase().replace(/[’']/g, "'"));
+  const out = [];
+  for (const id of ids) for (const [title, type, file] of SIGHTS[id] || []) {
+    const core = sightCore(title);
+    if (core.length < 3 || have.some(h => h.includes(core) || (sightCore(h).length > 5 && core.includes(sightCore(h))))) continue;
+    if (!out.some(o => o.title === title)) out.push({ title, type, cid: id, image: file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=800` : null });
+  }
+  return out.slice(0, n);
+}
+const sightRow = (x, n) => `<button type="button" class="sight-sug" data-add-sight="${n}"><i style="${x.image ? `background-image:${cssUrl(x.image)}` : `background:${toneBg(TYPES[x.type] || TYPES.trip)}`}"></i><span><b>${esc(x.title)}</b><small>${flagOf(WORLD.byId[x.cid].iso2)} ${esc(WORLD.byId[x.cid].name)}</small></span><em>＋</em></button>`;
+let sightOffer = [];
+function addSight(x) {
+  const it = makeItem({ title: x.title, type: x.type, image: x.image, imageCredit: x.image ? 'Photo: Wikimedia Commons' : null });
+  it.countries = [x.cid]; it.place = WORLD.byId[x.cid].name;
+  items.push(it); save(); refresh();
+  toast(`Added “${x.title}”`);
+}
+async function renderCountryIdeas() {
+  const box = $('#formIdeas'), ids = pickedOf($('#formCountries'));
+  if (!ids.length || !WORLD) { box.hidden = true; return; }
+  await loadSights();
+  const list = sightsFor(ids, [form.title.value.trim()].filter(Boolean));
+  sightOffer = list;
+  box.hidden = !list.length;
+  box.innerHTML = list.length ? `<div class="ci-head">Also in ${esc(ids.map(id => WORLD.byId[id].name).slice(0, 2).join(' & '))}? Tap to add as separate goals.</div>${list.map(sightRow).join('')}` : '';
+}
+function entrySights(it) {
+  if (!WORLD || !SIGHTS) return '';
+  const ids = countriesForEntry(it);
+  const list = sightsFor(ids);
+  if (!list.length) return '';
+  sightOffer = list;
+  return `<div class="more-here"><div class="eyebrow">More in ${esc(ids.map(id => WORLD.byId[id].name).slice(0, 2).join(' & '))}</div>${list.map(sightRow).join('')}</div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-add-sight]'); if (!b) return;
+  const x = sightOffer[+b.dataset.addSight]; if (!x) return;
+  addSight(x);
+  if (b.closest('#formIdeas')) renderCountryIdeas();
+  else b.remove();
+});
+const placeFor = ids => ids.map(id => WORLD?.byId[id]?.name).filter(Boolean).join(', ');
+// Saving the picks: the place text follows them, unless they're what an older entry's place already meant
+function applyCountries(it, ids) {
+  const before = typeof countriesForEntry === 'function' && WORLD ? countriesForEntry(it) : [];
+  const same = before.length === ids.length && before.every(id => ids.includes(id));
+  if (!same) { it.place = placeFor(ids); it.lat = null; it.lng = null; }
+  it.countries = ids;
+}
 function makeItem(d) {
   return { id: crypto.randomUUID(), title: d.title, description: d.description || '', type: d.type,
     place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null, imageCredit: d.imageCredit || null, progress: d.progress || undefined,
@@ -3197,7 +3325,7 @@ document.addEventListener('click', e => {
     save();
     it.done ? onEntryCompleted(it) : onEntryReopened(it);
     const scratched = syncVisitFor(it);
-    if (scratched) toast(`${WORLD.byId[scratched].name} scratched off your map`);
+    if (scratched) toast(`${WORLD.byId[scratched].name} added to your map`);
     if (!it.done && detail?.kind === 'story') { exitDetail(); return; } // reopened: leave the story page
     refresh();
     if (it.done) openMemory(it);
@@ -3246,8 +3374,8 @@ function openForm(it) {
     form.title.value = it.title;
     form.description.value = it.description || '';
     form.type.value = it.type;
-    form.place.value = it.place || '';
   }
+  setFormCountries(it && WORLD ? countriesForEntry(it) : []);
   form.makePublic.checked = !!it?.public;
   $('#dlgTitle').textContent = it ? 'Edit entry' : 'New entry';
   $('#saveBtn').textContent = it ? 'Save changes' : 'Add to list';
@@ -3324,7 +3452,7 @@ function showSuggestion() {
 }
 async function maybeSuggest() {
   if (sgDismissed || pendingImage) return hideSuggest();
-  const title = form.title.value.trim(), place = form.place.value.trim();
+  const title = form.title.value.trim(), place = placeFor(pickedOf($('#formCountries')));
   const q = keywords(title).join(' ') + '|' + place;
   if (keywords(title).length === 0) return hideSuggest();
   if (q === sgQuery) return;
@@ -3336,7 +3464,6 @@ async function maybeSuggest() {
 }
 const suggestSoon = () => { clearTimeout(sgTimer); sgTimer = setTimeout(maybeSuggest, 650); };
 form.title.addEventListener('input', suggestSoon);
-form.place.addEventListener('change', suggestSoon);
 $('#sgNext').onclick = () => { sgIndex = (sgIndex + 1) % sgList.length; showSuggestion(); };
 $('#sgUse').onclick = () => { const x = sgList[sgIndex]; if (!x) return; setImage(x.src); pendingCredit = x.credit; hideSuggest(); };
 $('#sgNo').onclick = () => { sgDismissed = true; hideSuggest(); };
@@ -3384,7 +3511,7 @@ function entryMemory(it) {
     ${first ? `<p class="mem-lead">${esc(first.length > 220 ? first.slice(0, 220).trim() + '…' : first)}</p>` : ''}
     ${m.with ? `<div class="with">With ${esc(m.with)}</div>` : ''}
     ${photos.length ? `<div class="mem-thumbs">${photos.map(p => `<i style="background-image:${cssUrl(p)}" data-zoom-src="${esc(p)}"></i>`).join('')}</div>` : ''}
-    ${!m.highlight && !first && !photos.length ? `<p class="hint-line">No story yet. Write down what happened while you still remember it.</p>` : ''}
+    ${!m.highlight && !first && !photos.length ? `<p class="hint-line">No memory yet. Write down what happened while you still remember it.</p>` : ''}
   </div>`;
 }
 function openEntry(it) {
@@ -3405,16 +3532,18 @@ function openEntry(it) {
       ${it.imageCredit ? `<p class="credit-line">${esc(it.imageCredit)}</p>` : ''}
       ${goalBlock(it)}
       ${it.done ? entryMemory(it) : ''}
-      <div class="entry-actions">
+      <div class="act-main">
         ${it.done
           ? (hasStory(it)
-            ? `<button class="btn solid" data-act="story" data-id="${it.id}">Read story</button><button class="btn" data-act="memory" data-id="${it.id}">Edit memory</button>`
-            : `<button class="btn solid" data-act="memory" data-id="${it.id}">Write story</button>`)
-          : `<button class="btn solid" data-act="toggle" data-id="${it.id}">Complete</button>`}
-        ${!it.done && !it.focus ? `<button class="btn" data-g="focus" data-id="${it.id}">Focus</button>` : ''}
-        ${it.done ? `<button class="link-quiet" data-act="toggle" data-id="${it.id}">Reopen</button>` : `<button class="btn" data-act="edit" data-id="${it.id}">Edit</button>`}
+            ? `<button class="btn solid" data-act="story" data-id="${it.id}">Open memory</button><button class="btn" data-act="memory" data-id="${it.id}">Edit memory</button>`
+            : `<button class="btn solid" data-act="memory" data-id="${it.id}">Write memory</button>`)
+          : `<button class="btn solid" data-act="toggle" data-id="${it.id}">Complete</button>${!it.focus ? `<button class="btn" data-g="focus" data-id="${it.id}">Focus</button>` : ''}`}
+      </div>
+      <div class="act-quiet">
+        ${it.done ? `<button class="link-quiet" data-act="toggle" data-id="${it.id}">Reopen</button>` : `<button class="link-quiet" data-act="edit" data-id="${it.id}">Edit</button>`}
         <button class="link-quiet" data-act="delete" data-id="${it.id}">Remove</button>
       </div>
+      ${entrySights(it)}
     </div>
     ${hs.length ? `
       <div class="sights-head"><h3>Don't miss</h3><span class="eyebrow">${seen} of ${hs.length} seen</span></div>
@@ -3438,7 +3567,7 @@ form.addEventListener('submit', e => {
   // Coordinates aren't asked for any more: the map finds the country from Place. Edits keep any saved ones.
   const prev = editingId ? items.find(i => i.id === editingId) : null;
   const fields = {
-    title, description: fd.get('description').trim(), type: fd.get('type'), place: fd.get('place').trim(),
+    title, description: fd.get('description').trim(), type: fd.get('type'), place: prev?.place || '',
     lat: prev?.lat ?? null, lng: prev?.lng ?? null,
     image: pendingImage || null,
     imageCredit: pendingImage && !pendingImage.startsWith('data:') ? pendingCredit : null, // own photos need no credit
@@ -3452,9 +3581,11 @@ form.addEventListener('submit', e => {
     fields.progress = { target, unit, log: prev?.progress?.log || [] };
   } else fields.progress = undefined;
   const backup = JSON.stringify(items);
-  if (editingId) Object.assign(items.find(i => i.id === editingId), fields);
+  const picks = pickedOf($('#formCountries'));
+  if (editingId) { const it = items.find(i => i.id === editingId); Object.assign(it, fields); applyCountries(it, picks); }
   else {
     const it = makeItem(fields);
+    applyCountries(it, picks);
     // Already done: save it straight away as completed; its photos (cover + highlights) become the story
     if (fd.get('completed')) {
       const date = getWhen($('#doneWhen'));
@@ -3474,7 +3605,7 @@ form.addEventListener('submit', e => {
   dlg.close();
   if (wasEdit) refresh();
   else showNewEntry(items.at(-1));
-  toast(scratched ? `${saved.done && !wasEdit ? 'Completed' : 'Saved'} · ${WORLD.byId[scratched].name} scratched off your map`
+  toast(scratched ? `${saved.done && !wasEdit ? 'Completed' : 'Saved'} · ${WORLD.byId[scratched].name} added to your map`
     : wasEdit ? 'Saved' : saved.done ? 'Added as completed' : 'Added to your list');
 });
 /* One-off or progress goal */
@@ -3522,6 +3653,7 @@ form.completed.addEventListener('change', () => {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reloadIntoUpdate(); });
   }
   // An invite link takes priority over the first-run interests swipe
+  loadSights();
   loadWorld().then(backfillVisits).finally(() => { route(); initGoals(); if (pendingJoin) { setView('friends'); openJoin(pendingJoin); pendingJoin = null; } else if (!loadPrefs()) openOnboarding(); });
 </script>
 </body>

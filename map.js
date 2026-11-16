@@ -1,5 +1,5 @@
 /* ===================================================================
-   World map: scratch-off countries, bucket-list overlay, Discover,
+   World map: visited countries, bucket-list overlay, Discover,
    and a shareable map card. Loaded after the main script and shares
    its globals (items, save, esc, cssUrl, toast, TYPES, …).
    =================================================================== */
@@ -20,7 +20,7 @@ const MAP_W = 1000, MAP_H = 440;
 const UN_COUNTRIES = 195;
 let mapFilter = 'all';
 let vb = { x: 0, y: 0, w: MAP_W, h: MAP_H };
-let entryCountries = new Map();   // item.id -> country id
+let entryCountries = new Map();   // item.id -> [country ids]
 let drawerId = null;
 
 const flagOf = iso2 => iso2 && /^[A-Z]{2}$/.test(iso2)
@@ -51,7 +51,14 @@ function project(lon, lat) {
   const y = t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2));
   return [(x + WORLD.xmax) * WORLD.scale, (WORLD.ymax - y) * WORLD.scale];
 }
-function countryForEntry(i) {
+// The countries a goal is in: the ones picked in its form, else a guess from older entries' place text or pin
+function countriesForEntry(i) {
+  if (Array.isArray(i.countries)) return i.countries.filter(id => WORLD?.byId[id]);
+  const c = guessCountry(i);
+  return c ? [c] : [];
+}
+const countryForEntry = i => countriesForEntry(i)[0] || null;
+function guessCountry(i) {
   const text = (i.place || '').toLowerCase();
   if (text) {
     let best = null, bestLen = 0;
@@ -70,13 +77,14 @@ function countryForEntry(i) {
 }
 function computeEntryCountries() {
   entryCountries = new Map();
-  for (const i of items) { const c = countryForEntry(i); if (c) entryCountries.set(i.id, c); }
-  for (const [cid, v] of Object.entries(visits)) for (const eid of v.entries || []) if (!entryCountries.has(eid)) entryCountries.set(eid, cid);
+  for (const i of items) { const c = countriesForEntry(i); if (c.length) entryCountries.set(i.id, c); }
+  for (const [cid, v] of Object.entries(visits)) for (const eid of v.entries || []) if (!entryCountries.has(eid)) entryCountries.set(eid, [cid]);
 }
-const listCountries = () => new Set(items.filter(i => !i.done && entryCountries.has(i.id)).map(i => entryCountries.get(i.id)));
-const entriesIn = id => items.filter(i => entryCountries.get(i.id) === id);
+const inCountry = (i, id) => (entryCountries.get(i.id) || []).includes(id);
+const listCountries = () => new Set(items.filter(i => !i.done).flatMap(i => entryCountries.get(i.id) || []));
+const entriesIn = id => items.filter(i => inCountry(i, id));
 // Completed entries the user linked to a visited country (skipping any that were since deleted)
-const linkedEntries = id => [...new Set([...(visits[id]?.entries || []).map(eid => items.find(i => i.id === eid)), ...items.filter(i => i.done && entryCountries.get(i.id) === id)])].filter(Boolean);
+const linkedEntries = id => [...new Set([...(visits[id]?.entries || []).map(eid => items.find(i => i.id === eid)), ...items.filter(i => i.done && inCountry(i, id))])].filter(Boolean);
 // The visit's own photo, else the cover of its first linked story, else a photo of the country
 const visitPhotoOf = id => visits[id]?.photo || linkedEntries(id).map(coverOf).find(Boolean) || countryPhoto(id);
 
@@ -127,16 +135,16 @@ const ymOf = it => { const d = memDate(it); return datePrec(it) === 'year' ? Str
 // Countries scratched this way (auto) are unscratched again when their last linked entry goes; ones you scratched yourself stay.
 function syncVisitFor(it) {
   if (!WORLD) return null;
-  const cid = it.done && items.includes(it) ? countryForEntry(it) : null;
+  const cids = it.done && items.includes(it) ? countriesForEntry(it) : [];
   let changed = false, scratched = null;
   for (const [id, v] of Object.entries(visits)) {
-    if (id === cid || !(v.entries || []).includes(it.id)) continue;
+    if (cids.includes(id) || !(v.entries || []).includes(it.id)) continue;
     v.entries = v.entries.filter(e => e !== it.id); changed = true;
     if (v.auto && !v.entries.length) delete visits[id];
   }
-  if (cid) {
+  for (const cid of cids) {
     const v = visits[cid];
-    if (!v) { visits[cid] = { date: ymOf(it), comment: '', photo: null, entries: [it.id], at: Date.now(), auto: true }; scratched = cid; changed = true; }
+    if (!v) { visits[cid] = { date: ymOf(it), comment: '', photo: null, entries: [it.id], at: Date.now(), auto: true }; scratched ||= cid; changed = true; }
     else if (!(v.entries || []).includes(it.id)) { v.entries = [...(v.entries || []), it.id]; changed = true; }
   }
   if (changed) saveVisits();
@@ -203,8 +211,8 @@ function renderMapStrip(visitedIds, onList) {
   };
   const showVis = mapFilter !== 'list', showList = mapFilter !== 'visited';
   $('#mapStrip').innerHTML =
-    (showVis ? `<div class="strip-head"><h3>Scratched</h3><span class="eyebrow">${vis.length}</span></div>
-      <div class="ctiles">${vis.length ? vis.map(v => tile(v.id, monthLabel(v.date) || 'Visited', visitPhotoOf(v.id))).join('') : `<p class="muted-note">Click any country on the map to scratch it off.</p>`}</div>` : '') +
+    (showVis ? `<div class="strip-head"><h3>Visited</h3><span class="eyebrow">${vis.length}</span></div>
+      <div class="ctiles">${vis.length ? vis.map(v => tile(v.id, monthLabel(v.date) || 'Visited', visitPhotoOf(v.id))).join('') : `<p class="muted-note">Tap any country on the map to mark it as visited.</p>`}</div>` : '') +
     (showList ? `<div class="strip-head"><h3>On my list</h3><span class="eyebrow">${list.length}</span></div>
       <div class="ctiles">${list.length ? list.map(id => tile(id, `${entriesIn(id).filter(i => !i.done).length} on the list`, entriesIn(id).map(entryCover).find(Boolean))).join('') : `<p class="muted-note">Countries from your open entries appear here.</p>`}</div>` : '');
 }
@@ -293,7 +301,7 @@ function initMapInteractions() {
     const p = e.target.closest('path[data-id]');
     if (!p) return tip.classList.remove('on');
     const c = WORLD.byId[p.dataset.id], v = visits[c.id], n = entriesIn(c.id).filter(i => !i.done).length;
-    tip.innerHTML = `<span>${flagOf(c.iso2)} ${esc(c.name)}</span><small>${v ? 'Scratched' + (v.date ? ' · ' + monthLabel(v.date) : '') : n ? `${n} on your list` : 'Not yet'}</small>`;
+    tip.innerHTML = `<span>${flagOf(c.iso2)} ${esc(c.name)}</span><small>${v ? 'Visited' + (v.date ? ' · ' + monthLabel(v.date) : '') : n ? `${n} on your list` : 'Not yet'}</small>`;
     tip.classList.add('on');
   });
   svg.addEventListener('pointermove', e => {
@@ -337,7 +345,7 @@ function closeDrawer() {
   $('#drawer').classList.remove('open');
   document.querySelectorAll('#countriesG path.selected').forEach(p => p.classList.remove('selected'));
 }
-let scratchState = null;   // null | 'scratching' | 'form'
+let scratchState = null;   // null | 'ask' (just marked visited: add a memory or skip) | 'edit'
 let visitPhoto = null;
 let visitLinks = new Set();   // entry ids being linked in the visit form
 
@@ -350,14 +358,15 @@ function renderDrawer() {
   const open = entries.filter(i => !i.done), done = v ? [] : entries.filter(i => i.done && !linkedIds.has(i.id)); // visited: completed ones are under "Completed here"
 
   let main;
-  if (scratchState === 'scratching') {
-    main = `<div class="scratch-wrap">
-        <canvas id="scratchBase" width="760" height="520"></canvas>
-        <canvas id="scratchTop" width="760" height="520"></canvas>
-      </div>
-      <p class="scratch-hint">Scratch the foil to mark ${esc(c.name)} as visited</p>`;
-  } else if (scratchState === 'form' || (v && scratchState === 'edit')) {
-    visitPhoto = scratchState === 'edit' ? v?.photo || null : visitPhoto;
+  if (v && scratchState === 'ask') {
+    main = `<div class="visit-ask">
+        <div class="seal">✓ Visited</div>
+        <h3>Add a memory of ${esc(c.name)}?</h3>
+        <p class="hint-line">When you went, a photo, a few words. You can always add it later.</p>
+        <div class="visit-ask-btns"><button class="btn solid" data-dact="edit-visit">Add a memory</button><button class="btn" data-dact="cancel-visit">Skip</button></div>
+      </div>`;
+  } else if (v && scratchState === 'edit') {
+    visitPhoto = v?.photo || null;
     main = `<form class="visit-form" id="visitForm">
         <label>When<input type="month" name="date" value="${esc(v?.date || '')}"></label>
         <div class="field">Photograph
@@ -376,22 +385,19 @@ function renderDrawer() {
     const linked = linkedEntries(c.id);
     const own = visits[c.id]?.photo || linkedEntries(c.id).map(coverOf).find(Boolean);
     main = `${photo ? `<div class="visit-photo" style="background-image:${cssUrl(photo)}"></div>${!own && countryPhotoCredit(c.id) ? `<p class="photo-credit">${esc(countryPhotoCredit(c.id))}</p>` : ''}` : ''}
-      <div class="visit-meta"><span class="seal">✓ Scratched</span>${v.date ? `<span>${monthLabel(v.date)}</span>` : ''}</div>
+      <div class="visit-meta"><span class="seal">✓ Visited</span>${v.date ? `<span>${monthLabel(v.date)}</span>` : ''}</div>
       ${v.comment ? `<blockquote class="visit-comment">${esc(v.comment)}</blockquote>` : ''}
       ${linked.length ? `<div class="linked"><div class="eyebrow">Completed here</div>${linked.map(i => `
         <button class="entry-row" data-act="view" data-id="${i.id}">
           <i style="${coverOf(i) ? `background-image:${cssUrl(coverOf(i))}` : `background:${toneBg(TYPES[i.type] || TYPES.other)}`}"></i>
-          <span><b>${esc(i.title)}</b><small>${hasStory(i) ? 'Story' : 'Write story'}</small></span></button>`).join('')}</div>` : ''}
+          <span><b>${esc(i.title)}</b><small>${hasStory(i) ? 'Memory' : 'Write memory'}</small></span></button>`).join('')}</div>` : ''}
       <div class="drawer-actions">
-        <button class="btn" data-dact="edit-visit">Edit</button>
+        <button class="btn" data-dact="edit-visit">${v.date || v.comment || v.photo ? 'Edit memory' : 'Add a memory'}</button>
         <button class="btn" data-dact="share-country">Share</button>
-        <button class="link-quiet" data-dact="unvisit">Unscratch</button>
+        <button class="link-quiet" data-dact="unvisit">Not visited</button>
       </div>`;
   } else {
-    main = `<button class="scratch-cta" data-dact="start-scratch">
-        <span class="foil-swatch"></span>
-        <span><b>I've been here</b><small>Scratch it off your map</small></span>
-      </button>`;
+    main = `<button class="btn solid wide been-here" data-dact="mark-visited">✓  I've been here</button>`;
   }
 
   const row = i => `<button class="entry-row" data-act="view" data-id="${i.id}">
@@ -410,7 +416,6 @@ function renderDrawer() {
       <button class="link-quiet" data-dact="add-entry">+ Add an entry in ${esc(c.name)}</button>
     </div>`;
 
-  if (scratchState === 'scratching') mountScratch(c);
   if ($('#visitForm')) mountVisitForm(c);
 }
 
@@ -419,78 +424,21 @@ $('#drawer').addEventListener('click', e => {
   const a = e.target.closest('[data-dact]')?.dataset.dact;
   if (!a) return;
   const c = WORLD.byId[drawerId];
-  if (a === 'start-scratch') {
-    scratchState = 'scratching'; visitPhoto = null;
-    visitLinks = new Set(entriesIn(c.id).filter(i => i.done).map(i => i.id)); // pre-select completed entries from this country
-    renderDrawer();
+  if (a === 'mark-visited') {
+    // That's it: visited. Completed goals from here are linked; then offer to add a memory, or skip
+    visits[c.id] = { date: '', comment: '', photo: null, entries: entriesIn(c.id).filter(i => i.done).map(i => i.id), at: Date.now() };
+    saveVisits();
+    scratchState = 'ask';
+    renderMap().then(() => { const p = $(`#countriesG [data-id="${c.id}"]`); p?.classList.add('just-scratched'); setTimeout(() => p?.classList.remove('just-scratched'), 1600); });
+    toast(`${c.name} marked as visited`);
   }
   else if (a === 'edit-visit') { scratchState = 'edit'; visitLinks = new Set(visits[c.id]?.entries || []); renderDrawer(); }
   else if (a === 'cancel-visit') { scratchState = null; renderDrawer(); }
-  else if (a === 'unvisit') uiConfirm({ eyebrow: 'Unscratch', title: `Unscratch ${c.name}?`, body: 'Its date, photo and note are removed from your map. Your entries stay.', ok: 'Unscratch', danger: true }).then(ok => { if (!ok) return; delete visits[c.id]; saveVisits(); scratchState = null; renderMap(); });
+  else if (a === 'unvisit') uiConfirm({ eyebrow: 'Not visited', title: `Remove ${c.name} from your visited countries?`, body: 'Its date, photo and note are removed from your map. Your entries stay.', ok: 'Remove', danger: true }).then(ok => { if (!ok) return; delete visits[c.id]; saveVisits(); scratchState = null; renderMap(); });
   else if (a === 'discover') openDiscover(c.id);
   else if (a === 'share-country') openCountryShare(c.id);
-  else if (a === 'add-entry') { openForm(); form.place.value = c.name; form.type.value = 'trip'; }
+  else if (a === 'add-entry') { openForm(); setFormCountries([c.id]); form.type.value = 'trip'; }
 });
-
-/* Scratch-off canvas: silhouette underneath, foil on top */
-function mountScratch(c) {
-  const base = $('#scratchBase'), top = $('#scratchTop');
-  const W = base.width, H = base.height;
-  const bctx = base.getContext('2d'), tctx = top.getContext('2d');
-  const el = $(`#countriesG [data-id="${c.id}"]`);
-  let b = el.getBBox();
-  if (b.width > 600) b = { x: 0, y: 0, width: MAP_W, height: MAP_H };
-  const s = Math.min((W - 120) / b.width, (H - 120) / b.height);
-  const ox = (W - b.width * s) / 2 - b.x * s, oy = (H - b.height * s) / 2 - b.y * s;
-  const path = new Path2D(c.d);
-
-  // Underneath: cream silhouette on dark, a little glow
-  bctx.fillStyle = '#151311'; bctx.fillRect(0, 0, W, H);
-  bctx.save(); bctx.translate(ox, oy); bctx.scale(s, s);
-  bctx.shadowColor = 'rgba(200,169,106,.45)'; bctx.shadowBlur = 40;
-  bctx.fillStyle = '#ede4d6'; bctx.fill(path);
-  bctx.restore();
-
-  // Foil
-  const g = tctx.createLinearGradient(0, 0, W, H);
-  [['#3b3329', 0], ['#7a6a4e', .35], ['#c8b48a', .5], ['#6e5f45', .62], ['#2e2821', 1]].forEach(([col, at]) => g.addColorStop(at, col));
-  tctx.fillStyle = g; tctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 2600; i++) { // fine grain
-    tctx.fillStyle = `rgba(255,255,255,${Math.random() * .07})`;
-    tctx.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5);
-  }
-  tctx.save(); tctx.translate(ox, oy); tctx.scale(s, s);
-  tctx.strokeStyle = 'rgba(20,17,15,.35)'; tctx.lineWidth = 2 / s; tctx.stroke(path);
-  tctx.restore();
-  tctx.font = '500 22px Inter'; tctx.fillStyle = 'rgba(20,17,15,.55)'; tctx.textAlign = 'center';
-  tctx.letterSpacing = '8px'; tctx.fillText('SCRATCH', W / 2, H - 34); tctx.letterSpacing = '0px';
-
-  tctx.globalCompositeOperation = 'destination-out';
-  tctx.lineCap = tctx.lineJoin = 'round';
-  tctx.lineWidth = 64;
-  let last = null, done = false, strokes = 0;
-  const pos = e => { const r = top.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
-  const cleared = () => {
-    const d = tctx.getImageData(0, 0, W, H).data;
-    let clear = 0, n = 0;
-    for (let y = 4; y < H; y += 12) for (let x = 4; x < W; x += 12) { n++; if (d[(y * W + x) * 4 + 3] < 40) clear++; }
-    return clear / n;
-  };
-  top.addEventListener('pointerdown', e => { last = pos(e); top.setPointerCapture(e.pointerId); });
-  top.addEventListener('pointermove', e => {
-    if (!last || done) return;
-    const p = pos(e);
-    tctx.beginPath(); tctx.moveTo(...last); tctx.lineTo(...p); tctx.stroke();
-    last = p;
-    if (++strokes % 12 === 0 && cleared() > 0.42) finish();
-  });
-  top.addEventListener('pointerup', () => { last = null; if (!done && cleared() > 0.42) finish(); });
-  function finish() {
-    done = true;
-    top.classList.add('gone');
-    setTimeout(() => { scratchState = 'form'; renderDrawer(); }, 650);
-  }
-}
 
 // Checklist of completed entries: ones from this country first, then the rest
 function linkPicker(c) {
@@ -541,7 +489,7 @@ function mountVisitForm(c) {
         setTimeout(() => p?.classList.remove('just-scratched'), 1600);
       }
     });
-    toast(isNew ? `${c.name} scratched off` : 'Saved');
+    toast(isNew ? `${c.name} marked as visited` : 'Memory saved');
   });
 }
 
@@ -668,7 +616,7 @@ function renderDiscover(c, d) {
   $('#storyContent').innerHTML = `
     <header class="story-hero" style="background-image:${heroBg}">
       <div class="inner">
-        <div class="eyebrow">Discover · ${esc(c.continent)}${v ? ' · Scratched' : ''}</div>
+        <div class="eyebrow">Discover · ${esc(c.continent)}${v ? ' · Visited' : ''}</div>
         <h2>${flagOf(c.iso2)} ${esc(c.name)}</h2>
       </div>
     </header>
@@ -753,7 +701,7 @@ async function composeMapCard() {
   ctx.fillText(String(ids.length), W / 2, numY);
   ctx.letterSpacing = '0px';
   ctx.font = '500 40px Inter'; ctx.fillStyle = '#fff';
-  ctx.fillText(ids.length === 1 ? 'country scratched off' : 'countries scratched off', W / 2, numY + 70);
+  ctx.fillText(ids.length === 1 ? 'country visited' : 'countries visited', W / 2, numY + 70);
   const conts = new Set(ids.map(id => WORLD.byId[id].continent)).size;
   ctx.font = '400 28px Inter'; ctx.fillStyle = '#c8a96a';
   ctx.letterSpacing = '5px';
@@ -783,7 +731,7 @@ async function composeCountryCard(id) {
   }, v.comment ? 'quote' : 'minimal');
 }
 function openMapShare() {
-  openShareWith({ title: 'My map', desc: 'A 1080 × 1920 story of every country you\'ve scratched off, with your latest photos.', filename: 'the-list-world-map', compose: () => composeMapCard() });
+  openShareWith({ title: 'My map', desc: 'A 1080 × 1920 story of every country you\'ve visited, with your latest photos.', filename: 'the-list-world-map', compose: () => composeMapCard() });
 }
 function openCountryShare(id) {
   const c = WORLD.byId[id];

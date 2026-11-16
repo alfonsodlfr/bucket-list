@@ -320,7 +320,10 @@ function updateYearPill() {
 }
 function openRitual() {
   const y = new Date().getFullYear(), plan = planFor(y);
-  ritual = { year: y, picks: new Set(plan?.ids || []), step: plan && ritualPhase() === 'midyear' ? 'review' : 'pick' };
+  const picks = new Set(plan?.ids || []);
+  // The order is fixed when the sheet opens (already-planned goals first); picking only ticks, it never reshuffles
+  const order = items.filter(i => !i.done).sort((a, b) => (picks.has(b.id) - picks.has(a.id)) || b.createdAt - a.createdAt).map(i => i.id);
+  ritual = { year: y, picks, order, step: plan && ritualPhase() === 'midyear' ? 'review' : 'pick' };
   renderRitual();
   ritualDlg.showModal();
 }
@@ -338,7 +341,7 @@ function renderRitual() {
       <div class="form-actions"><button type="button" class="btn" data-rt="edit">Change the plan</button><button type="button" class="btn solid" data-rt="close">Done</button></div>`;
     return;
   }
-  const open = items.filter(i => !i.done).sort((a, b) => (picks.has(b.id) - picks.has(a.id)) || b.createdAt - a.createdAt);
+  const open = [...ritual.order.map(id => items.find(i => i.id === id)), ...items.filter(i => !i.done && !ritual.order.includes(i.id))].filter(i => i && !i.done);
   $('#ritualBody').innerHTML = `
     <div class="ritual-year">${year}</div>
     <h2>What will this year be about?</h2>
@@ -350,7 +353,14 @@ function renderRitual() {
 }
 ritualDlg.addEventListener('click', e => {
   const p = e.target.closest('[data-rt-pick]');
-  if (p) { ritual.picks.has(p.dataset.rtPick) ? ritual.picks.delete(p.dataset.rtPick) : ritual.picks.add(p.dataset.rtPick); return renderRitual(); }
+  if (p) {
+    const id = p.dataset.rtPick, on = !ritual.picks.has(id);
+    on ? ritual.picks.add(id) : ritual.picks.delete(id);
+    p.classList.toggle('on', on); p.querySelector('em').textContent = on ? '✓' : '';
+    const n = ritual.picks.size, save = $('#ritualBody [data-rt="save"]');
+    save.disabled = !n; save.textContent = n ? `Plan ${n} goal${n === 1 ? '' : 's'}` : 'Pick a few';
+    return;
+  }
   const a = e.target.closest('[data-rt]')?.dataset.rt;
   if (a === 'later' || a === 'close') return ritualDlg.close();
   if (a === 'edit') { ritual.step = 'pick'; return renderRitual(); }
@@ -382,7 +392,7 @@ function yearsInARow() {
 }
 const STAMPS = [
   { id: 'first', group: 'Firsts', icon: '✓', label: 'Off the list', line: 'Your first goal completed. The first of many.', test: () => doneItems().length >= 1 },
-  { id: 'c5', group: 'Travel', icon: '5', label: 'Countries', line: 'Five countries scratched off.', test: () => visitedIds().length >= 5 },
+  { id: 'c5', group: 'Travel', icon: '5', label: 'Countries', line: 'Five countries visited.', test: () => visitedIds().length >= 5 },
   { id: 'c10', group: 'Travel', icon: '10', label: 'Countries', line: 'Double digits.', big: true, test: () => visitedIds().length >= 10 },
   { id: 'c25', group: 'Travel', icon: '25', label: 'Countries', line: 'A quarter of a hundred countries.', big: true, test: () => visitedIds().length >= 25 },
   { id: 'c50', group: 'Travel', icon: '50', label: 'Countries', line: 'A quarter of the world.', big: true, test: () => visitedIds().length >= 50 },
@@ -405,13 +415,13 @@ const STAMPS = [
 // How to earn each stamp, and progress toward it where there's something to count
 const HOW = {
   first: ['Complete any goal on your list.', () => [doneItems().length, 1]],
-  c5: ['Scratch off 5 countries on your map.', () => [visitedIds().length, 5]],
-  c10: ['Scratch off 10 countries on your map.', () => [visitedIds().length, 10]],
-  c25: ['Scratch off 25 countries on your map.', () => [visitedIds().length, 25]],
-  c50: ['Scratch off 50 countries on your map.', () => [visitedIds().length, 50]],
+  c5: ['Visit 5 countries.', () => [visitedIds().length, 5]],
+  c10: ['Visit 10 countries.', () => [visitedIds().length, 10]],
+  c25: ['Visit 25 countries.', () => [visitedIds().length, 25]],
+  c50: ['Visit 50 countries.', () => [visitedIds().length, 50]],
   k3: ['Visit countries on 3 different continents.', () => [continents().size, 3]],
   k6: ['Visit countries on all 6 inhabited continents.', () => [continents().size, 6]],
-  newyear: ['Scratch off a country you visited this year. Earned again each year.', null],
+  newyear: ['Mark a country you visited this year. Earned again each year.', null],
   g10: ['Complete 10 goals.', () => [doneItems().length, 10]],
   g25: ['Complete 25 goals.', () => [doneItems().length, 25]],
   g50: ['Complete 50 goals.', () => [doneItems().length, 50]],
@@ -526,7 +536,7 @@ async function findNear({ manual = false } = {}) {
   computeEntryCountries();
   const open = items.filter(i => !i.done);
   const close = open.filter(i => i.lat != null).map(i => ({ i, d: km(pos.latitude, pos.longitude, i.lat, i.lng) })).filter(x => x.d < 200);
-  const inCountry = cid ? open.filter(i => entryCountries.get(i.id) === cid && !close.some(x => x.i === i)).map(i => ({ i, d: null })) : [];
+  const inCountry = cid ? open.filter(i => inCountry(i, cid) && !close.some(x => x.i === i)).map(i => ({ i, d: null })) : [];
   const list = [...close.sort((a, b) => a.d - b.d), ...inCountry];
   if (!manual) {
     const recently = st.shown[cid] && Date.now() - st.shown[cid] < 30 * DAYMS;

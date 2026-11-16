@@ -219,25 +219,6 @@ const SLIDES = [
     });
     if (!top.length) T(ctx, 'Nothing completed yet.', 90, 820, { size: 40, weight: 300, color: '#9a9184' });
   } },
-  { id: 'streak', draw(ctx, t, D) {
-    wash(ctx, '#3a2316', '#152030', '#f0c27a');
-    header(ctx, D, t);
-    T(ctx, 'Longest streak', 90, 520, { size: 52, weight: 300, alpha: seg(t, 0, .3) });
-    T(ctx, String(Math.round(D.streak * ease(t / .6))), 70, 860, { size: 380, weight: 200, spacing: -16, color: '#fff' });
-    T(ctx, D.streak === 1 ? 'week in a row' : 'weeks in a row', 90, 960, { size: 56, color: '#c8a96a', alpha: seg(t, .3, .6) });
-    Tfit(ctx, `with at least one goal done · ${D.activeWeeks} active weeks`, 90, 1030, WR_W - 180, { size: 32, weight: 300, color: '#9a9184', alpha: seg(t, .4, .7) });
-    // 53 week dots
-    const cols = 9, s = 92, x0 = 120, y0 = 1180;
-    for (let w = 0; w < 53; w++) {
-      const k = seg(t, .3 + w * .008, .6 + w * .008);
-      const x = x0 + (w % cols) * s, y = y0 + Math.floor(w / cols) * s;
-      const inRun = w > D.streakEnd - D.streak && w <= D.streakEnd;
-      ctx.globalAlpha = k;
-      ctx.fillStyle = inRun ? '#f0c27a' : D.weeks.has(w) ? 'rgba(237,228,214,.75)' : 'rgba(237,228,214,.1)';
-      ctx.beginPath(); ctx.arc(x, y, inRun ? 22 : 16, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  } },
   { id: 'travel', draw(ctx, t, D) {
     wash(ctx, '#11253a', '#2f2a1a', '#2f6f8f');
     header(ctx, D, t);
@@ -363,7 +344,7 @@ const SLIDES = [
     if (cover) photo(ctx, cover, 790, 330, 300, 360, 5, seg(t, .1, .4), 20);
     const cells = [
       [D.total, 'goals completed'], [D.countries.length, 'countries'],
-      [D.streak, 'week streak'], [D.won, 'challenges won'],
+      [D.cities.length, D.cities.length === 1 ? 'place' : 'places'], [D.won, 'challenges won'],
       [D.points, 'challenge points'], [(TYPES[D.types[0]?.[0]] || TYPES.other).plural, 'top category'],
     ];
     cells.forEach(([v, l], i) => {
@@ -558,3 +539,19 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeWrapped();
 });
 document.addEventListener('click', e => { if (e.target.closest('[data-open-wrapped]')) openWrapped(); });
+// Swipe down closes, like stories. Sideways swipes and taps keep their meaning.
+let swY = null, swX = 0;
+stage.addEventListener('touchstart', e => { if (e.touches.length === 1 && !e.target.closest('button:not(.wr-tap),a')) { swY = e.touches[0].clientY; swX = e.touches[0].clientX; } else swY = null; }, { passive: true });
+stage.addEventListener('touchmove', e => {
+  if (swY === null) return;
+  const dy = e.touches[0].clientY - swY, dx = e.touches[0].clientX - swX;
+  if (Math.abs(dx) > 30 && Math.abs(dx) > dy) { swY = null; stage.style.transform = ''; return; }
+  if (dy > 10) { e.preventDefault(); stage.style.transition = 'none'; stage.style.transform = `translateY(${dy * .6}px) scale(${1 - Math.min(dy, 400) / 4000})`; stage.style.opacity = String(1 - Math.min(dy, 400) / 900); }
+}, { passive: false });
+stage.addEventListener('touchend', e => {
+  if (swY === null) return;
+  const dy = e.changedTouches[0].clientY - swY; swY = null;
+  stage.style.transition = 'transform .3s, opacity .3s';
+  if (dy > 120) { held = true; setTimeout(() => { held = false; }, 0); closeWrapped(); }
+  stage.style.transform = ''; stage.style.opacity = '';
+});
