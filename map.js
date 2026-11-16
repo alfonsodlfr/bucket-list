@@ -379,7 +379,7 @@ function renderDrawer() {
       <div class="visit-meta"><span class="seal">✓ Scratched</span>${v.date ? `<span>${monthLabel(v.date)}</span>` : ''}</div>
       ${v.comment ? `<blockquote class="visit-comment">${esc(v.comment)}</blockquote>` : ''}
       ${linked.length ? `<div class="linked"><div class="eyebrow">Completed here</div>${linked.map(i => `
-        <button class="entry-row" data-act="story" data-id="${i.id}">
+        <button class="entry-row" data-act="view" data-id="${i.id}">
           <i style="${coverOf(i) ? `background-image:${cssUrl(coverOf(i))}` : `background:${toneBg(TYPES[i.type] || TYPES.other)}`}"></i>
           <span><b>${esc(i.title)}</b><small>${hasStory(i) ? 'Story' : 'Write story'}</small></span></button>`).join('')}</div>` : ''}
       <div class="drawer-actions">
