@@ -1104,15 +1104,15 @@ body.wr-open{overflow:hidden}
   .strip-head{margin:40px 0 14px}
 
   /* ---- Bottom sheets ---- */
-  body.sheet-open{overflow:hidden}
+  html.scroll-lock,html.scroll-lock body{overflow:hidden;overscroll-behavior:none}
   .grab{display:flex;justify-content:center;align-items:flex-start;padding-top:10px;height:28px;touch-action:none;cursor:grab;z-index:5}
   .grab::after{content:"";width:40px;height:5px;border-radius:5px;background:rgba(237,228,214,.5);box-shadow:0 1px 6px rgba(0,0,0,.4)}
   .sheet{display:block;position:fixed;inset:0;z-index:60;pointer-events:none}
   .sheet.open{pointer-events:auto}
   .sheet-backdrop{position:absolute;inset:0;background:rgba(6,5,4,.62);opacity:0;transition:opacity .45s var(--ease)}
   .sheet.open .sheet-backdrop{opacity:1}
-  .sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:calc(100dvh - env(safe-area-inset-top) - 16px);display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translateY(105%);transition:transform .5s cubic-bezier(.32,.72,0,1)}
-  .sheet.open .sheet-panel{transform:none}
+  .sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:calc(100dvh - env(safe-area-inset-top) - 16px);display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translate3d(0,calc(100% + 110px),0);transition:transform .5s cubic-bezier(.32,.72,0,1),visibility 0s .5s;visibility:hidden;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+  .sheet.open .sheet-panel{transform:none;visibility:visible;transition:transform .5s cubic-bezier(.32,.72,0,1),visibility 0s}
   .sheet-panel .grab{position:absolute;top:0;left:0;right:0}
   .sheet-x{position:absolute;top:14px;right:14px;z-index:6;width:34px;height:34px;border-radius:50%;background:rgba(12,11,10,.55);border:1px solid rgba(237,228,214,.25);color:var(--text);font-size:18px;line-height:1}
   .sheet-body{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
@@ -2212,27 +2212,13 @@ if (window.visualViewport) {
 }
 
 // While any sheet, drawer or dialog is open, freeze the page behind it.
-// iOS ignores overflow:hidden on body, so pin the body in place and restore the scroll on close.
-let lockY = null;
+// overflow:hidden on <html> (honoured by iOS 16+) stops scrolling without moving or re-laying-out the page;
+// pinning the body with position:fixed made iOS repaint everything and flicker as sheets opened and closed.
 function syncScrollLock() {
   const open = useSheet() && (!!document.querySelector('dialog[open]') || $('#sheet').classList.contains('open') || $('#drawer').classList.contains('open'));
-  const b = document.body.style;
-  if (open && lockY === null) {
-    lockY = scrollY;
-    Object.assign(b, { position: 'fixed', top: `-${lockY}px`, left: '0', right: '0', width: '100%' });
-  } else if (!open && lockY !== null) {
-    Object.assign(b, { position: '', top: '', left: '', right: '', width: '' });
-    const y = lockY; lockY = null;
-    _scrollTo(0, y);
-  }
+  document.documentElement.classList.toggle('scroll-lock', open);
 }
 new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open', 'class'] });
-// Code that scrolls while the page is pinned (e.g. opening a full page from a sheet) should land after unlocking
-const _scrollTo = window.scrollTo.bind(window);
-window.scrollTo = (x, y) => {
-  if (lockY !== null && typeof x === 'number') { lockY = y ?? 0; return; }
-  _scrollTo(x, y);
-};
 
 // Every dialog gets a grab handle; on mobile they are bottom sheets
 document.querySelectorAll('dialog').forEach(d => {
