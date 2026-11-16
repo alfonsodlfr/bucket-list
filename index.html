@@ -211,7 +211,7 @@ textarea{resize:vertical;min-height:70px}
 .moment.seen{opacity:1;transform:none}
 body.calm .card{animation:none;opacity:1}
 body.calm .moment{transition:none}
-.moment::after{content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;background:var(--bg);border:1px solid var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 0 6px var(--bg)}
+.moment::after{display:none;content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;background:var(--bg);border:1px solid var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 0 6px var(--bg)}
 .moment:nth-of-type(even) .photos{order:2}
 .photos{position:relative;aspect-ratio:4/5;cursor:pointer}
 .photos .main{position:absolute;inset:0 12% 10% 0;border-radius:3px;background-size:cover;background-position:center;filter:sepia(.25) saturate(.85) brightness(.92);transition:filter 1s var(--ease),transform 1.4s var(--ease);box-shadow:0 30px 70px rgba(0,0,0,.5)}
@@ -219,9 +219,10 @@ body.calm .moment{transition:none}
 .photos:hover .main{filter:none;transform:scale(1.015)}
 .photos:hover .sub{filter:none;transform:translate(6px,6px) rotate(2deg)}
 .photos .count{position:absolute;left:14px;bottom:calc(10% + 14px);font-size:10px;letter-spacing:.24em;text-transform:uppercase;background:rgba(8,7,6,.6);padding:6px 10px;border-radius:999px;backdrop-filter:blur(6px)}
-.moment-text .date{display:flex;align-items:baseline;gap:14px;margin-bottom:18px}
-.moment-text .date b{font-size:64px;font-weight:200;letter-spacing:-.04em;line-height:.8;color:var(--text)}
-.moment-text .date span{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.moment .date{grid-column:1/-1;justify-self:center;display:flex;align-items:baseline;gap:14px;margin-bottom:-40px;position:relative;z-index:1}
+.moment .date::before{content:"";position:absolute;inset:-18px -36px;background:radial-gradient(closest-side,var(--bg) 72%,transparent);z-index:-1}
+.moment .date b{font-size:64px;font-weight:200;letter-spacing:-.04em;line-height:.8;color:var(--text)}
+.moment .date span{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
 .moment-text h3{font-size:34px;font-weight:300;letter-spacing:-.02em;line-height:1.1;margin-bottom:10px}
 .moment-text .where{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:22px}
 .moment-text blockquote{margin:0 0 18px;padding-left:18px;border-left:1px solid var(--gold);font-size:18px;font-weight:300;line-height:1.5;color:var(--text)}
@@ -463,7 +464,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .share-side .btns{display:flex;gap:10px;flex-wrap:wrap}
 @media (max-width:700px){.share-wrap{grid-template-columns:1fr;justify-items:center;padding:28px}.share-preview{width:220px}}
 
-@media (max-width:860px){.lane::before{left:8px}.moment{grid-template-columns:1fr;gap:28px;padding-left:34px}.moment::after{left:8px;top:0}.moment:nth-of-type(even) .photos{order:0}}
+@media (max-width:860px){.lane::before{left:8px}.moment{grid-template-columns:1fr;gap:28px;padding-left:34px}.moment::after{left:8px;top:0}.moment:nth-of-type(even) .photos{order:0}
+  .moment{gap:16px}.moment::after{display:block;top:14px}
+  .moment .date{justify-self:start;margin-bottom:0}.moment .date::before{display:none}
+  .moment .photos{aspect-ratio:4/3}.moment .photos .main{inset:0 10% 0 0}.moment .photos .sub{width:34%;bottom:-14px}.moment .photos .count{bottom:14px}
+  .moment-text{padding-top:4px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.card,.moment,.gallery img{opacity:1;transform:none}}
 
 /* ===================== Social ===================== */
@@ -935,6 +940,10 @@ body.wr-open{overflow:hidden}
 .entry-memory .with{font-size:12px;color:var(--muted)}
 .mem-thumbs{display:flex;gap:8px}
 .mem-thumbs i{width:64px;height:64px;border-radius:6px;background-size:cover;background-position:center;cursor:zoom-in}
+.make-public{display:none}
+body.ideas-on .make-public{display:block}
+.make-public .switch small{max-width:460px}
+.shared-by{font-size:11px;letter-spacing:.06em;color:var(--gold);margin-top:6px}
 .pp-head{display:flex;align-items:center;gap:14px}
 .pp-head h2{font-size:24px}.pp-head small{font-size:12px;color:var(--muted)}
 .pp-group{display:grid;gap:10px;margin-top:4px}
@@ -1074,7 +1083,7 @@ body.wr-open{overflow:hidden}
   /* Memories */
   .lane-intro{margin:0 auto 40px}
   .moment{margin-bottom:64px;gap:20px}
-  .moment-text .date b{font-size:46px}
+  .moment .date b{font-size:46px}
   .moment-text h3{font-size:26px}
   .moment-text blockquote{font-size:16px}
 
@@ -1362,6 +1371,9 @@ body.wr-open{overflow:hidden}
         <button type="button" data-prec="day" class="on">Day</button><button type="button" data-prec="month">Month</button><button type="button" data-prec="year">Year</button></div></div>
       <input type="date" data-w="day"><input type="month" data-w="month" hidden><select data-w="year" hidden></select>
     </div>
+    </div>
+    <div class="full make-public">
+      <label class="switch"><input type="checkbox" name="makePublic" id="publicToggle"><span class="track"></span><span class="sw-text"><b>Make public</b><small>Adds it to Explore, where anyone can add it to their own list. Your name is shown; photos you uploaded stay private.</small></span></label>
     </div>
     <label class="full">Cover image <span class="hint-line">Optional. If empty, the first highlight is used.</span>
       <div class="drop" id="drop"><span id="dropText">Choose a photograph</span><input type="file" accept="image/*" id="file"></div>
@@ -2066,16 +2078,22 @@ obDlg.addEventListener('keydown', e => {
 obDlg.addEventListener('close', () => { if (ob && ob.mode !== 'edit' && !ob.saved) savePrefs([...ob.liked]); });
 
 /* Explore */
+const allIdeas = () => {
+  const builtIn = new Set(IDEAS.map(i => i.title.toLowerCase()));
+  const shared = (typeof publicIdeas === 'undefined' ? [] : publicIdeas).filter(i => i.createdBy !== ME && !builtIn.has(i.title.toLowerCase()));
+  return [...IDEAS, ...shared];
+};
 function regenerateIdeas() {
   const have = new Set(items.map(i => i.title.toLowerCase()));
-  const pool = IDEAS.filter(i => !have.has(i.title.toLowerCase()) && (exploreType === 'all' || i.type === exploreType));
+  const pool = allIdeas().filter(i => !have.has(i.title.toLowerCase()) && (exploreType === 'all' || (exploreType === 'people' ? i.community : i.type === exploreType)));
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   exploreIdeas = pool.slice(0, 10);
 }
 function renderExplore() {
-  const used = Object.keys(TYPES).filter(t => IDEAS.some(i => i.type === t));
+  const all = allIdeas();
+  const used = Object.keys(TYPES).filter(t => all.some(i => i.type === t));
   const chip = (t, label) => `<button class="chip ${exploreType === t ? 'active' : ''}" data-etype="${t}">${label}</button>`;
-  $('#echips').innerHTML = chip('all', 'All') + used.map(t => chip(t, TYPES[t].label)).join('');
+  $('#echips').innerHTML = chip('all', 'All') + (all.some(i => i.community) ? chip('people', 'From people') : '') + used.map(t => chip(t, TYPES[t].label)).join('');
   $('#egrid').innerHTML = exploreIdeas.length
     ? exploreIdeas.map((idea, n) => {
         const t = TYPES[idea.type];
@@ -2086,7 +2104,8 @@ function renderExplore() {
             <div class="body">
               ${placeLine(idea)}
               <h3>${esc(idea.title)}</h3>
-              <p class="desc">${esc(idea.description)}</p>
+              ${idea.description ? `<p class="desc">${esc(idea.description)}</p>` : ''}
+              ${idea.community ? `<div class="shared-by">Shared by ${esc(idea.author)}${idea.adds ? ` · added by ${idea.adds}` : ''}</div>` : ''}
               <div class="actions"><button class="primary" data-idea="${n}">Add to my list</button></div>
             </div>
           </article>`;
@@ -2308,7 +2327,12 @@ function setView(v) {
   if (v !== 'map' && typeof closeDrawer === 'function') closeDrawer();
   render();
   if (v === 'map') renderMap();
-  if (v === 'explore') { regenerateIdeas(); renderExplore(); }
+  if (v === 'explore') {
+    regenerateIdeas(); renderExplore();
+    // Fetch the shared pool; when new ideas arrive, reshuffle once to include them
+    const before = publicIdeas.length;
+    loadPublicIdeas().then(list => { if (currentView === 'explore' && list.length !== before) { regenerateIdeas(); renderExplore(); } });
+  }
   if (v === 'memories') renderLane();
   if (v === 'friends') renderFriends();
 }
@@ -2413,13 +2437,13 @@ function renderLane() {
     const second = photos[1] || (photos.length && i.image && i.image !== photos[0] ? i.image : null);
     return `${yearHtml}
       <article class="moment ${hasStory(i) ? '' : 'unwritten'}">
+        <div class="date">${datePrec(i) === 'year' ? `<b>${d.getFullYear()}</b><span>During the year</span>` : datePrec(i) === 'month' ? `<b>${MONTHS[d.getMonth()].slice(0, 3)}</b><span>${d.getFullYear()}</span>` : `<b>${String(d.getDate()).padStart(2, '0')}</b><span>${MONTHS[d.getMonth()]} ${d.getFullYear()}</span>`}</div>
         <div class="photos" data-act="story" data-id="${i.id}">
           <div class="main" style="background-image:${cover ? cssUrl(cover) + ',' : ''}${toneBg(t)}"></div>
           ${second ? `<div class="sub" style="background-image:${cssUrl(second)}"></div>` : ''}
           ${photos.length > 1 ? `<span class="count">${photos.length} photographs</span>` : ''}
         </div>
         <div class="moment-text">
-          <div class="date">${datePrec(i) === 'year' ? `<b>${d.getFullYear()}</b><span>During the year</span>` : datePrec(i) === 'month' ? `<b>${MONTHS[d.getMonth()].slice(0, 3)}</b><span>${d.getFullYear()}</span>` : `<b>${String(d.getDate()).padStart(2, '0')}</b><span>${MONTHS[d.getMonth()]} ${d.getFullYear()}</span>`}</div>
           <h3>${esc(i.title)}</h3>
           ${i.place ? `<div class="where">${esc(i.place)}</div>` : `<div class="where">${t.label}</div>`}
           ${m.highlight ? `<blockquote>${esc(m.highlight)}</blockquote>` : ''}
@@ -2489,6 +2513,7 @@ async function deleteMemory(it) {
     refresh(); toast('Memory deleted');
   } else if (r === 'alt') {
     items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it);
+    if (it.public) unpublishIdea(it.id).catch(() => {});
     if (detail?.id === it.id) exitDetail();
     refresh(); toast('Entry removed');
   }
@@ -3119,6 +3144,12 @@ function showNewEntry(it, message) {
   });
   if (message) toast(message);
 }
+// Keep an entry's public idea in step with its "Make public" switch (and its latest title, photo…)
+function syncPublic(it, want) {
+  if (want) publishIdea(it).then(() => { if (!it.public) { it.public = true; save(); refresh(); toast('Shared in Explore'); } })
+    .catch(e => { if (e?.message === 'cancelled') toast('Not made public: it needs your name'); else if (e?.message !== 'offline') toast('Couldn\'t make it public. Try again online.'); });
+  else if (it.public) { delete it.public; save(); unpublishIdea(it.id).catch(() => {}); toast('Removed from Explore'); }
+}
 function makeItem(d) {
   return { id: crypto.randomUUID(), title: d.title, description: d.description || '', type: d.type,
     place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null, imageCredit: d.imageCredit || null, progress: d.progress || undefined,
@@ -3142,7 +3173,9 @@ document.addEventListener('click', e => {
   if (el.dataset.act === 'shuffle') { regenerateIdeas(); return renderExplore(); }
   if (el.dataset.idea !== undefined) {
     const idea = exploreIdeas[+el.dataset.idea];
-    items.push(makeItem(idea)); save();
+    const added = makeItem(idea);
+    if (idea.community) { added.fromIdea = idea.id; countIdeaAdd(idea.id).catch(() => {}); }
+    items.push(added); save();
     exploreIdeas.splice(+el.dataset.idea, 1);
     toast('Added to your list');
     return renderExplore();
@@ -3178,7 +3211,7 @@ document.addEventListener('click', e => {
     openForm(it);
   } else if (el.dataset.act === 'delete') {
     uiConfirm({ eyebrow: 'Remove entry', title: `Remove “${it.title}”?`, body: it.done ? 'Its memory and photos go too. This can\'t be undone.' : 'It disappears from your list. This can\'t be undone.', ok: 'Remove', danger: true })
-      .then(ok => { if (!ok) return; items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it); if (detail?.id === it.id) exitDetail(); refresh(); toast('Removed'); });
+      .then(ok => { if (!ok) return; items = items.filter(i => i.id !== it.id); save(); onEntryReopened(it); syncVisitFor(it); if (it.public) unpublishIdea(it.id).catch(() => {}); if (detail?.id === it.id) exitDetail(); refresh(); toast('Removed'); });
   } else if (el.dataset.act === 'delete-memory') {
     deleteMemory(it);
   }
@@ -3215,6 +3248,7 @@ function openForm(it) {
     form.type.value = it.type;
     form.place.value = it.place || '';
   }
+  form.makePublic.checked = !!it?.public;
   $('#dlgTitle').textContent = it ? 'Edit entry' : 'New entry';
   $('#saveBtn').textContent = it ? 'Save changes' : 'Add to list';
   dlg.showModal();
@@ -3362,7 +3396,7 @@ function openEntry(it) {
   const html = `
     <header class="story-hero" style="background-image:${cover ? cssUrl(cover) + ',' : ''}${toneBg(t)}">
       <div class="inner">
-        <div class="eyebrow">${t.label}${it.place ? ` · ${esc(it.place)}` : ''}${it.done ? ' · Completed' : ''}</div>
+        <div class="eyebrow">${t.label}${it.place ? ` · ${esc(it.place)}` : ''}${it.done ? ' · Completed' : ''}${it.public ? ' · Public' : ''}</div>
         <h2>${esc(it.title)}</h2>
       </div>
     </header>
@@ -3433,6 +3467,7 @@ form.addEventListener('submit', e => {
   try { save(); } catch { items = JSON.parse(backup); return uiNotice('Storage is full', 'Try a smaller photo.'); }
   const wasEdit = !!editingId;
   const saved = wasEdit ? items.find(i => i.id === editingId) : items.at(-1);
+  syncPublic(saved, !!fd.get('makePublic'));
   // Completed entries scratch their country off the map (and move with it if the place changed)
   const scratched = typeof syncVisitFor === 'function' ? syncVisitFor(saved) : null;
   if (!wasEdit && saved.done) onEntryCompleted(saved);

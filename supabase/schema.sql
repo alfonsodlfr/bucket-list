@@ -275,3 +275,44 @@ do $$ begin
     alter publication supabase_realtime add table public.wishes;
   end if;
 end $$;
+
+-- ---------------------------------------------------------------
+-- v3: Public ideas. A goal you "Make public" joins the shared pool
+-- in Explore; anyone can read it and add a copy to their own list.
+-- ---------------------------------------------------------------
+create table if not exists public.ideas (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid not null default auth.uid() references public.profiles on delete cascade,
+  entry_id text not null,
+  author_name text not null check (char_length(trim(author_name)) between 1 and 40),
+  title text not null check (char_length(trim(title)) between 1 and 120),
+  description text check (char_length(description) <= 600),
+  type text not null,
+  place text check (char_length(place) <= 120),
+  image text check (image is null or (image ~ '^https://' and char_length(image) <= 1000)), -- web photos only, never your own uploads
+  image_credit text check (char_length(image_credit) <= 300),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (created_by, entry_id)
+);
+create table if not exists public.idea_adds (
+  idea_id uuid not null references public.ideas on delete cascade,
+  user_id uuid not null default auth.uid(),
+  created_at timestamptz not null default now(),
+  primary key (idea_id, user_id)
+);
+alter table public.ideas enable row level security;
+alter table public.idea_adds enable row level security;
+drop policy if exists "anyone reads public ideas" on public.ideas;
+create policy "anyone reads public ideas" on public.ideas for select to anon, authenticated using (true);
+drop policy if exists "share your ideas" on public.ideas;
+create policy "share your ideas" on public.ideas for insert to authenticated with check (created_by = auth.uid());
+drop policy if exists "edit your ideas" on public.ideas;
+create policy "edit your ideas" on public.ideas for update to authenticated using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists "unshare your ideas" on public.ideas;
+create policy "unshare your ideas" on public.ideas for delete to authenticated using (created_by = auth.uid());
+drop policy if exists "anyone reads add counts" on public.idea_adds;
+create policy "anyone reads add counts" on public.idea_adds for select to anon, authenticated using (true);
+drop policy if exists "count your add" on public.idea_adds;
+create policy "count your add" on public.idea_adds for insert to authenticated with check (user_id = auth.uid());
+grant select on public.ideas, public.idea_adds to anon;

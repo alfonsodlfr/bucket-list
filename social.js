@@ -950,6 +950,54 @@ function updateFriendsBadge() {
 }
 updateFriendsBadge();
 
+/* ---------- Public ideas ----------
+   "Make public" puts a goal in the shared pool shown in Explore. Anyone can read the pool (even before
+   they have a name); sharing needs a profile, since your name is shown with the idea.
+   Your own uploaded photos never leave your phone: only web photos (suggestions, built-in ideas) are shared. */
+const SITE = 'https://alfonsodlfr.github.io/bucket-list/';
+let publicIdeas = [], publicAt = 0;
+// The switch only shows once the shared pool exists and answers
+(async () => {
+  if (!sb) return;
+  const { error } = await sb.from('ideas').select('id').limit(1);
+  document.body.classList.toggle('ideas-on', !error);
+})();
+async function loadPublicIdeas(force = false) {
+  if (!sb || (!force && Date.now() - publicAt < 60e3)) return publicIdeas;
+  try {
+    const [ideas, adds] = await Promise.all([
+      sb.from('ideas').select('*').order('created_at', { ascending: false }).limit(500),
+      sb.from('idea_adds').select('idea_id'),
+    ]);
+    const n = {};
+    for (const a of must(adds) || []) n[a.idea_id] = (n[a.idea_id] || 0) + 1;
+    publicIdeas = (must(ideas) || []).map(r => ({ id: r.id, createdBy: r.created_by, entryId: r.entry_id, author: r.author_name, title: r.title,
+      description: r.description || '', type: TYPES[r.type] ? r.type : 'other', place: r.place || '', image: r.image, imageCredit: r.image_credit,
+      createdAt: ms(r.created_at), adds: n[r.id] || 0, community: true }));
+    publicAt = Date.now();
+  } catch (e) { console.warn('public ideas', e); }
+  return publicIdeas;
+}
+const sharableImage = src => !src || src.startsWith('data:') ? null : /^https:\/\//.test(src) ? src : src.startsWith('img/') ? SITE + src : null;
+async function publishIdea(it) {
+  await requireProfile('Your name is shown with the ideas you make public.');
+  const img = sharableImage(it.image);
+  must(await sb.from('ideas').upsert({ created_by: ME, entry_id: it.id, author_name: api.profile(ME).name.slice(0, 40), title: it.title, description: it.description || null,
+    type: it.type, place: it.place || null, image: img, image_credit: img ? it.imageCredit || null : null, updated_at: new Date().toISOString() }, { onConflict: 'created_by,entry_id' }));
+  publicAt = 0;
+}
+async function unpublishIdea(entryId) {
+  if (!sb || !ME) return;
+  must(await sb.from('ideas').delete().eq('created_by', ME).eq('entry_id', entryId));
+  publicAt = 0;
+}
+// Someone added a shared idea to their list: count it (only when they're signed in; it's just a tally)
+async function countIdeaAdd(ideaId) {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await sb.from('idea_adds').insert({ idea_id: ideaId, user_id: session.user.id });
+}
+
 // Called by the main app
 function onEntryCompleted(it) { api.publishEntry(it); }
 function onEntryUpdated(it) { if (it.done && S.activities.some(a => a.actorId === ME && a.entryId === it.id)) api.publishEntry(it); }
