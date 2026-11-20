@@ -378,3 +378,76 @@ begin
 end $$;
 revoke all on function public.take_due_reminders(text), public.drop_push_sub(text, text) from public;
 grant execute on function public.take_due_reminders(text), public.drop_push_sub(text, text) to anon, authenticated;
+
+-- ---------------------------------------------------------------
+-- v5: Usernames and friends. Everyone gets a unique @username made
+-- from their name (like a Revtag). You find people by it and add them;
+-- when both have added each other you're friends: you see each other in
+-- the feed, like people who share a challenge.
+-- ---------------------------------------------------------------
+alter table public.profiles add column if not exists username text;
+create unique index if not exists profiles_username_key on public.profiles (lower(username));
+do $$ begin
+  alter table public.profiles add constraint username_format check (username is null or username ~ '^[a-z0-9._]{3,24}$');
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.follows (
+  follower uuid not null default auth.uid() references public.profiles on delete cascade,
+  followee uuid not null references public.profiles on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (follower, followee),
+  check (follower <> followee)
+);
+alter table public.follows enable row level security;
+drop policy if exists "see your follows" on public.follows;
+create policy "see your follows" on public.follows for select to authenticated using (follower = auth.uid() or followee = auth.uid());
+drop policy if exists "add people" on public.follows;
+create policy "add people" on public.follows for insert to authenticated with check (follower = auth.uid());
+drop policy if exists "remove or decline" on public.follows;
+create policy "remove or decline" on public.follows for delete to authenticated using (follower = auth.uid() or followee = auth.uid());
+
+-- Friends (both added each other) count like sharing a challenge everywhere that rule is used
+create or replace function public.shares_challenge(other uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select other = auth.uid()
+    or exists (select 1 from challenge_members a join challenge_members b on a.challenge_id = b.challenge_id where a.user_id = auth.uid() and b.user_id = other)
+    or exists (select 1 from follows f join follows g on g.follower = f.followee and g.followee = f.follower where f.follower = auth.uid() and f.followee = other);
+$$;
+-- You can see the name of someone who added you, or whom you added
+drop policy if exists "see people you added or who added you" on public.profiles;
+create policy "see people you added or who added you" on public.profiles for select to authenticated using (
+  exists (select 1 from follows f where (f.follower = profiles.id and f.followee = auth.uid()) or (f.followee = profiles.id and f.follower = auth.uid())));
+
+-- Pick a free username from a base (adds digits if taken), or exactly the one asked for
+create or replace function public.claim_username(base text, exact boolean default false)
+returns text language plpgsql security definer set search_path = public as $$
+declare cand text; tries int := 0;
+begin
+  if auth.uid() is null then raise exception 'sign in first'; end if;
+  base := left(regexp_replace(lower(coalesce(base, '')), '[^a-z0-9._]', '', 'g'), 18);
+  if exact then
+    if base !~ '^[a-z0-9._]{3,24}$' then raise exception 'invalid'; end if;
+    if exists (select 1 from profiles where lower(username) = base and id <> auth.uid()) then raise exception 'taken'; end if;
+    update profiles set username = base where id = auth.uid();
+    return base;
+  end if;
+  if length(base) < 3 then base := base || 'traveller'; end if;
+  cand := base;
+  while exists (select 1 from profiles where lower(username) = cand and id <> auth.uid()) loop
+    tries := tries + 1;
+    cand := base || floor(random() * power(10, least(2 + tries / 6, 6)))::int::text;
+  end loop;
+  update profiles set username = cand where id = auth.uid();
+  return cand;
+end $$;
+-- Find people by @username (prefix), never by name: names stay private until you're connected
+create or replace function public.find_people(q text)
+returns table (id uuid, name text, color text, username text)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.name, p.color, p.username from profiles p
+   where auth.uid() is not null and p.id <> auth.uid() and p.username is not null
+     and length(ltrim(trim(q), '@')) >= 3 and lower(p.username) like lower(ltrim(trim(q), '@')) || '%'
+   order by lower(p.username) = lower(ltrim(trim(q), '@')) desc, p.username limit 10;
+$$;
+revoke all on function public.claim_username(text, boolean), public.find_people(text) from public, anon;
+grant execute on function public.claim_username(text, boolean), public.find_people(text) to authenticated;

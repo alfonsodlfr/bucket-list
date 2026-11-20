@@ -25,7 +25,8 @@ const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 let ME = null;        // your user id once signed in
 let socialReady = false;
-const emptyS = () => ({ profiles: [], challenges: [], members: [], items: [], completions: [], votes: [], activities: [], reactions: [], wishes: [] });
+const emptyS = () => ({ profiles: [], challenges: [], members: [], items: [], completions: [], votes: [], activities: [], reactions: [], wishes: [], follows: [] });
+let handlesOn = false; // usernames + friends, once the database has them (v5)
 let S = emptyS();
 
 /* ---------- Events ---------- */
@@ -36,7 +37,8 @@ const emit = (type, detail) => bus.dispatchEvent(new CustomEvent(type, { detail 
 const ms = v => (v ? Date.parse(v) : null);
 const iso = t => new Date(t).toISOString();
 const MAP = {
-  profiles: r => ({ id: r.id, name: r.name, color: r.color, shareList: r.share_list }),
+  profiles: r => ({ id: r.id, name: r.name, color: r.color, shareList: r.share_list, username: r.username || null }),
+  follows: r => ({ follower: r.follower, followee: r.followee }),
   wishes: r => ({ userId: r.user_id, entryId: r.entry_id, title: r.title, type: r.type, place: r.place, sourceActivity: r.source_activity }),
   challenges: r => ({ id: r.id, title: r.title, startsAt: ms(r.starts_at), endsAt: ms(r.ends_at), createdBy: r.created_by, inviteCode: r.invite_code }),
   members: r => ({ challengeId: r.challenge_id, userId: r.user_id }),
@@ -46,7 +48,7 @@ const MAP = {
   activities: r => ({ id: r.id, actorId: r.actor_id, kind: r.kind, title: r.title, photo: r.photo, place: r.place || '', type: r.type, caption: r.caption || '', entryId: r.entry_id, challengeId: r.challenge_id, completionId: r.completion_id, points: r.points, createdAt: ms(r.created_at) }),
   reactions: r => ({ activityId: r.activity_id, userId: r.user_id, emoji: r.emoji, createdAt: ms(r.created_at) }),
 };
-const TABLE = { profiles: 'profiles', challenges: 'challenges', members: 'challenge_members', items: 'challenge_items', completions: 'challenge_completions', votes: 'completion_votes', activities: 'activities', reactions: 'reactions', wishes: 'wishes' };
+const TABLE = { profiles: 'profiles', challenges: 'challenges', members: 'challenge_members', items: 'challenge_items', completions: 'challenge_completions', votes: 'completion_votes', activities: 'activities', reactions: 'reactions', wishes: 'wishes', follows: 'follows' };
 function friendlyError(e) {
   const m = e?.message || String(e);
   if (e?.code === '23505' && /hash/.test(m)) return 'This photo has already been used as proof.';
@@ -63,12 +65,12 @@ async function sync() {
   if (syncing) { syncAgain = true; return syncing; }
   syncing = (async () => {
     const before = S;
-    const rows = await Promise.all(Object.entries(TABLE).map(([k, t]) => {
+    const rows = await Promise.all(Object.entries(TABLE).filter(([k]) => k !== 'follows' || handlesOn).map(([k, t]) => {
       let q = sb.from(t).select('*');
       if (k === 'activities') q = q.order('created_at', { ascending: false }).limit(200);
       return q.then(must).then(r => [k, r.map(MAP[k])]);
     }));
-    S = Object.fromEntries(rows);
+    S = { ...emptyS(), ...Object.fromEntries(rows) };
     socialReady = true;
     announceNews(before);
     emit('challenges', {}); emit('feed', { kind: 'sync' }); emit('completion', {});
@@ -99,14 +101,20 @@ let channel = null;
 function listen() {
   channel?.unsubscribe();
   channel = sb.channel('the-list');
-  Object.values(TABLE).forEach(table => channel.on('postgres_changes', { event: '*', schema: 'public', table }, syncSoon));
+  Object.values(TABLE).filter(t => t !== 'follows' || handlesOn).forEach(table => channel.on('postgres_changes', { event: '*', schema: 'public', table }, syncSoon));
   channel.subscribe();
 }
 // Coming back to the app: catch up on anything missed while it was asleep
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ME) sync(); });
 
+const follows = (a, b) => S.follows.some(f => f.follower === a && f.followee === b);
+const isMutual = id => follows(ME, id) && follows(id, ME);
+const requestsIn = () => S.follows.filter(f => f.followee === ME && !follows(ME, f.follower)).map(f => f.follower);
 async function startSocial() {
   if (!sb) return;
+  const probe = await sb.from('follows').select('follower').limit(1);
+  handlesOn = !probe.error;
+  document.body.classList.toggle('handles-on', handlesOn);
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return renderSocialChrome();
   const me = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
@@ -115,6 +123,8 @@ async function startSocial() {
   renderSocialChrome();
   listen();
   await sync();
+  ensureUsername();
+  if (pendingAdd) { setView('friends'); openAddFriends(pendingAdd); pendingAdd = null; }
 }
 const signedIn = () => !!ME;
 
@@ -139,6 +149,7 @@ async function createProfile(name, shareList = true) {
   renderSocialChrome();
   listen();
   await sync();
+  await ensureUsername();
 }
 $('#profileForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -278,7 +289,8 @@ const needMe = () => { if (!ME) throw new Error('Create your profile first.'); }
 const api = {
   on(type, fn) { const h = e => fn(e.detail); bus.addEventListener(type, h); return () => bus.removeEventListener(type, h); },
   profile: id => S.profiles.find(p => p.id === id) || { id, name: id === ME ? 'You' : 'Someone', color: '#555' },
-  friends: () => S.profiles.filter(p => p.id !== ME),
+  // Friends: people who share a challenge with you, or who added you back
+  friends: () => S.profiles.filter(p => p.id !== ME && (isMutual(p.id) || S.members.some(m => m.userId === p.id && S.members.some(x => x.userId === ME && x.challengeId === m.challengeId)))),
 
   // challenges ------------------------------------------------------
   challengeSync: id => S.challenges.find(c => c.id === id),
@@ -530,7 +542,95 @@ const welcomeCard = tab => tab === 'feed' ? `<div class="empty social-welcome">
     <div class="btns-row"><button class="btn solid" data-new-ch>New challenge</button><button class="btn" data-join-link>Join with a link</button></div>
   </div>`;
 /* "Add friends": friends are the people you share a challenge with, so adding one means sending a challenge link */
-function openAddFriends() {
+/* ---------- Usernames and friends ---------- */
+// "Alfonso de la Fuente" → alfonsodelafuente (accents dropped); the database adds digits if it's taken
+const handleBase = name => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 18);
+async function ensureUsername() {
+  if (!handlesOn || !ME || api.profile(ME).username) return;
+  try { must(await sb.rpc('claim_username', { base: handleBase(api.profile(ME).name) })); await sync(); }
+  catch (e) { console.warn('username', e); }
+}
+async function renameProfile(name) {
+  must(await sb.from('profiles').update({ name }).eq('id', ME));
+  await sync();
+}
+async function changeUsername(wanted) {
+  must(await sb.rpc('claim_username', { base: wanted, exact: true }));
+  await sync();
+}
+const handleLink = u => `${location.origin}${location.pathname}#add/${u}`;
+function shareHandle() {
+  const u = api.profile(ME).username, url = handleLink(u);
+  const text = `Add me on The List: @${u}`;
+  if (navigator.share) navigator.share({ title: 'The List', text, url }).catch(() => {});
+  else navigator.clipboard?.writeText(`${text} ${url}`).then(() => toast('Link copied'));
+}
+let pendingAdd = (location.hash.match(/^#add\/([a-z0-9._]+)/) || [])[1] || null;
+if (pendingAdd) history.replaceState({ app: false }, '', '#friends');
+async function addFriend(id) {
+  must(await sb.from('follows').insert({ follower: ME, followee: id }));
+  await sync();
+  toast(isMutual(id) ? `You and ${firstName(id)} are friends now` : 'Request sent. You’ll be friends once they add you back');
+}
+async function removeFollow(follower, followee) {
+  must(await sb.from('follows').delete().eq('follower', follower).eq('followee', followee));
+  await sync();
+}
+const personState = id => isMutual(id) ? 'friends' : follows(ME, id) ? 'requested' : follows(id, ME) ? 'accept' : 'add';
+function personRow(p) {
+  const st = personState(p.id);
+  const btn = st === 'friends' ? '<span class="pr-state">Friends ✓</span>'
+    : st === 'requested' ? '<span class="pr-state">Requested</span>'
+    : `<button class="btn ${st === 'accept' ? 'solid' : ''} small" data-follow="${p.id}">${st === 'accept' ? 'Accept' : 'Add'}</button>`;
+  return `<div class="person"><span class="avatar" style="width:38px;height:38px;background:${esc(p.color || '#555')}">${esc((p.name || '?')[0].toUpperCase())}</span><span class="pr-who"><b>${esc(p.name)}</b><small>@${esc(p.username)}</small></span>${btn}</div>`;
+}
+let findTimer = null, findResults = [];
+async function findPeople(q) {
+  const box = $('#findResults');
+  if (!box) return;
+  q = q.trim().replace(/^@/, '').toLowerCase();
+  if (q.length < 3) { box.innerHTML = q ? '<p class="hint-line">Type at least 3 letters of their @username.</p>' : ''; return; }
+  try {
+    findResults = must(await sb.rpc('find_people', { q })) || [];
+    if ($('#findInput')?.value.trim().replace(/^@/, '').toLowerCase() !== q) return;
+    box.innerHTML = findResults.length ? findResults.map(personRow).join('') : `<p class="hint-line">Nobody called @${esc(q)} yet.</p>`;
+  } catch { box.innerHTML = '<p class="hint-line">Couldn’t search. Are you online?</p>'; }
+}
+function requestsHtml() {
+  if (!handlesOn) return '';
+  const ids = requestsIn();
+  if (!ids.length) return '';
+  return `<div class="requests"><div class="eyebrow gold-eye">Friend requests</div>${ids.map(id => {
+    const p = api.profile(id);
+    return `<div class="person"><span class="avatar" style="width:38px;height:38px;background:${esc(p.color || '#555')}">${esc((p.name || '?')[0].toUpperCase())}</span><span class="pr-who"><b>${esc(p.name)}</b><small>${p.username ? '@' + esc(p.username) : 'wants to be friends'}</small></span>
+      <button class="link-quiet" data-decline="${id}">Not now</button><button class="btn solid small" data-follow="${id}">Accept</button></div>`;
+  }).join('')}</div>`;
+}
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-follow]');
+  if (f) { f.disabled = true; addFriend(f.dataset.follow).then(() => { const q = $('#findInput')?.value; if (q && $('#addFriendsDlg').open) findPeople(q); renderSocialChrome(); }).catch(err => { f.disabled = false; toast(friendlyError(err)); }); return; }
+  const d = e.target.closest('[data-decline]');
+  if (d) removeFollow(d.dataset.decline, ME).then(renderSocialChrome).catch(err => toast(friendlyError(err)));
+  if (e.target.closest('[data-share-handle]')) shareHandle();
+});
+document.addEventListener('input', e => { if (e.target.id === 'findInput') { clearTimeout(findTimer); const v = e.target.value; findTimer = setTimeout(() => findPeople(v), 250); } });
+
+function openAddFriends(prefill = '') {
+  if (handlesOn) {
+    if (!ME) return requireProfile('Pick a name. You’ll get an @username friends can find you by.').then(() => openAddFriends(prefill)).catch(() => {});
+    const me = api.profile(ME);
+    $('#addFriendsBody').innerHTML = `
+      <div class="eyebrow">Add friends</div>
+      <h2>Find your friends</h2>
+      ${me.username ? `<div class="my-handle"><span>You’re <b>@${esc(me.username)}</b></span><button class="link-quiet" data-share-handle>Share</button></div>` : ''}
+      <label class="find"><input id="findInput" placeholder="Search by @username" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(prefill)}"></label>
+      <div class="find-results" id="findResults"></div>
+      <p class="hint-line">Once you’ve both added each other, you see each other’s completions in the feed. You can also bring people in through a challenge.</p>
+      <button class="create-opt" data-new-ch><span class="ico">＋</span><span><b>Start a challenge</b><small>Pick goals and a timeframe, then share the link</small></span></button>`;
+    $('#addFriendsDlg').showModal();
+    if (prefill) findPeople(prefill);
+    return;
+  }
   const open = ME ? S.challenges.filter(c => api.status(c) !== 'ended' && api.membersOf(c.id).includes(ME)) : [];
   $('#addFriendsBody').innerHTML = `
     <div class="eyebrow">Add friends</div>
@@ -554,6 +654,7 @@ function renderFriendsShell() {
   $('#friendsActions').innerHTML = friendsTab === 'feed'
     ? `<button class="btn solid" data-add-friends>Add friends</button>`
     : `<button class="link-quiet" data-join-link>Join with a link</button><button class="btn solid" data-new-ch>New challenge</button>`;
+  $('#requests').innerHTML = ME ? requestsHtml() : '';
   if (!ME) { $('#feed').innerHTML = welcomeCard('feed'); $('#challengeList').innerHTML = welcomeCard('challenges'); return; }
   if (friendsTab === 'feed') renderFeed(); else renderChallenges();
 }
@@ -946,7 +1047,7 @@ api.on('challenges', refreshChallengeList);
 api.on('completion', refreshChallengeList);
 function updateFriendsBadge() {
   const unseen = S.activities.filter(a => a.actorId !== ME && a.createdAt > (+localStorage.getItem('bucketlist.feedSeen') || 0)).length;
-  document.querySelectorAll('[data-tab="friends"]').forEach(b => b.classList.toggle('has-new', unseen > 0 && currentView !== 'friends'));
+  document.querySelectorAll('[data-tab="friends"]').forEach(b => b.classList.toggle('has-new', (unseen > 0 || (handlesOn && ME && requestsIn().length > 0)) && currentView !== 'friends'));
 }
 updateFriendsBadge();
 

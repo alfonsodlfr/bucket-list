@@ -189,7 +189,6 @@ async function renderMap() {
   $('#mapCount').textContent = visitedIds.length;
   $('#mapNoun').textContent = visitedIds.length === 1 ? 'country' : 'countries';
   $('#mapSub').textContent = `${Math.round(visitedIds.length / UN_COUNTRIES * 100)}% of the world · ${conts.size} of 6 continents · ${onList.size} on your list`;
-  document.querySelectorAll('[data-mapfilter]').forEach(b => b.classList.toggle('active', b.dataset.mapfilter === mapFilter));
   const missing = visitedIds.filter(id => countryPhotos.urls[id] === undefined && (!countryPhotos.files || countryPhotos.files[id]));
   if (missing.length && !cpLoading) loadCountryPhotos(missing);
   if ($('#mapSearch').options.length < 2) fillCountries();
@@ -208,13 +207,46 @@ function renderMapStrip(visitedIds, onList) {
     return `<button class="ctile ${photo ? '' : pending ? 'foil-tile loading' : 'foil-tile'}" data-country="${id}" style="${photo ? `background-image:${cssUrl(photo)}` : ''}">
       <span class="flag">${flagOf(c.iso2)}</span><span class="nm">${esc(c.name)}</span><span class="sub">${sub}</span></button>`;
   };
-  const showVis = mapFilter !== 'list', showList = mapFilter !== 'visited';
+  const showVis = true, showList = true;
   $('#mapStrip').innerHTML =
     (showVis ? `<div class="strip-head"><h3>Visited</h3><span class="eyebrow">${vis.length}</span></div>
       <div class="ctiles">${vis.length ? vis.map(v => tile(v.id, monthLabel(v.date) || 'Visited', visitPhotoOf(v.id))).join('') : `<p class="muted-note">Open the map and tap a country, or use Find a country.</p>`}</div>` : '') +
     (showList ? `<div class="strip-head"><h3>On my list</h3><span class="eyebrow">${list.length}</span></div>
-      <div class="ctiles">${list.length ? list.map(id => tile(id, `${entriesIn(id).filter(i => !i.done).length} on the list`, entriesIn(id).map(entryCover).find(Boolean))).join('') : `<p class="muted-note">Countries from your open entries appear here.</p>`}</div>` : '');
+      <div class="ctiles">${list.length ? list.map(id => tile(id, `${entriesIn(id).filter(i => !i.done).length} on the list`, entriesIn(id).map(entryCover).find(Boolean))).join('') : `<p class="muted-note">Countries from your open entries appear here.</p>`}</div>` : '') +
+    recommendedHtml(visitedIds, onList);
 }
+
+/* Recommended: ideas matching the interests you picked, places in countries already on your list
+   (or on the same continents), and well-known sights there. Nothing already on your list; a fresh mix each day. */
+let recOffer = [];
+function recommendedHtml(visitedIds, onList) {
+  const liked = likedTypes(), have = new Set(items.map(i => i.title.toLowerCase()));
+  const conts = new Set([...visitedIds, ...onList].map(id => WORLD.byId[id]?.continent).filter(Boolean));
+  const day = Math.floor(Date.now() / 864e5), jitter = s => ((Math.sin(day * 97 + [...s].reduce((h, c) => h * 31 + c.charCodeAt(0) | 0, 7)) + 1) / 2);
+  const pool = (typeof allIdeas === 'function' ? allIdeas() : IDEAS).filter(i => !have.has(i.title.toLowerCase())).map(i => {
+    const cid = countryForEntry(i);
+    const score = (liked?.has(i.type) ? 3 : liked ? 0 : 1) + (cid && onList.has(cid) ? 3 : 0) + (cid && conts.has(WORLD.byId[cid]?.continent) ? 1 : 0) + (cid && visits[cid] ? -1 : 0) + jitter(i.title);
+    return { title: i.title, type: i.type, image: i.image, place: i.place, description: i.description || '', cid, score, idea: i };
+  });
+  const sights = typeof sightsFor === 'function' ? sightsFor([...onList].filter(id => !visits[id]), [], 4).map(x => ({ ...x, place: WORLD.byId[x.cid].name, score: 3.5 + jitter(x.title), sight: true })) : [];
+  recOffer = [...pool, ...sights].filter(x => !liked || liked.has(x.type) || x.sight).sort((a, b) => b.score - a.score).slice(0, 8);
+  if (!recOffer.length) return '';
+  return `<div class="strip-head"><h3>Recommended</h3><span class="eyebrow">For you</span></div>
+    <div class="rtiles">${recOffer.map((x, n) => `<article class="rtile">
+      <div class="rimg" style="${x.image ? `background-image:${cssUrl(x.image)}` : `background:${toneBg(TYPES[x.type] || TYPES.other)}`}"></div>
+      <div class="rbody"><small>${x.cid ? `${flagOf(WORLD.byId[x.cid].iso2)} ${esc(WORLD.byId[x.cid].name)}` : esc((TYPES[x.type] || TYPES.other).label)}</small><b>${esc(x.title)}</b></div>
+      <button class="radd" data-add-rec="${n}" aria-label="Add ${esc(x.title)} to my list">＋</button>
+    </article>`).join('')}</div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-add-rec]'); if (!b) return;
+  const x = recOffer[+b.dataset.addRec]; if (!x) return;
+  const it = makeItem(x.idea || { title: x.title, type: x.type, image: x.image, imageCredit: x.image ? 'Photo: Wikimedia Commons' : null });
+  if (x.cid) { it.countries = [x.cid]; it.place = it.place || WORLD.byId[x.cid].name; }
+  if (x.idea?.community) { it.fromIdea = x.idea.id; countIdeaAdd(x.idea.id).catch(() => {}); }
+  items.push(it); save(); renderMap();
+  toast(`Added “${x.title}”`);
+});
 
 /* ---------- Globe ----------
    Countries as longitude/latitude rings (globe.json, made once from countries.json), drawn with an orthographic
@@ -270,7 +302,9 @@ async function setGlobeOpen(on) {
   globeOpen = on;
   document.body.classList.toggle('globe-open', on);
   $('#showMap').setAttribute('aria-expanded', on);
-  $('#showMap span').textContent = on ? 'Hide map' : 'Show map';
+  if (!on) { closeDrawer(); return; }
+  const n = Object.keys(visits).filter(id => WORLD?.byId[id]).length;
+  $('#mapOvTitle').innerHTML = `The world · <b>${n}</b> visited`;
   if (on) { await loadGeo(); drawGlobe(); kickGlobe(); }
 }
 function zoomAt(f) { G.k = Math.min(8, Math.max(1, G.k / f)); drawGlobe(); }
@@ -295,7 +329,8 @@ let drag = null;
 let fillCountries = () => {};
 function initMapInteractions() {
   const svg = $('#worldSvg'), tip = $('#mapTip');
-  $('#showMap').addEventListener('click', () => setGlobeOpen(!globeOpen));
+  $('#showMap').addEventListener('click', () => setGlobeOpen(true));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && globeOpen && !drawerId && !document.querySelector('dialog[open]')) setGlobeOpen(false); });
   svg.addEventListener('wheel', e => {
     if (!e.ctrlKey && !e.metaKey) return; // normal scrolling keeps scrolling the page; pinch / ⌘-scroll zooms
     e.preventDefault(); zoomAt(Math.exp(e.deltaY * 0.01));
@@ -350,7 +385,7 @@ function initMapInteractions() {
   document.querySelector('#mapFrame').addEventListener('click', e => {
     const z = e.target.closest('[data-zoom]')?.dataset.zoom;
     if (z === 'in') zoomAt(0.65); else if (z === 'out') zoomAt(1.55); else if (z === 'reset') resetVB();
-    else if (z === 'full' || z === 'exit') { document.body.classList.toggle('map-full', z === 'full'); requestAnimationFrame(drawGlobe); }
+    else if (z === 'exit') setGlobeOpen(false);
   });
   // Find a country: a native dropdown (the iPhone shows its picker wheel), every country A–Z, visited ones marked
   const sel = $('#mapSearch');
@@ -775,8 +810,6 @@ function openCountryShare(id) {
 /* ---------- Wire up ---------- */
 document.addEventListener('click', e => {
   if (e.target.closest('.entry-row')) closeDrawer();
-  const f = e.target.closest('[data-mapfilter]');
-  if (f) { mapFilter = f.dataset.mapfilter; renderMap(); }
   const t = e.target.closest('[data-country]');
   if (t) { openDrawer(t.dataset.country); zoomTo(t.dataset.country); if (globeOpen) window.scrollTo({ top: $('#mapFrame').offsetTop - 90, behavior: 'smooth' }); }
   if (e.target.closest('[data-act="share-map"]')) openMapShare();

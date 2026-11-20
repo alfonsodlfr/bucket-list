@@ -316,7 +316,14 @@ body:not([data-view="list"]) .hero,body:not([data-view="list"]) .hero + div{disp
 .map-frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#16130f,#0a0908)}
 #worldSvg{display:block;width:100%;height:min(72vh,640px);touch-action:none;user-select:none;cursor:grab}
 .map-frame{display:none}
-body.globe-open .map-frame{display:block;animation:in .5s var(--ease)}
+body.globe-open .map-frame{display:block;position:fixed;inset:0;z-index:58;margin:0;border:0;border-radius:0;animation:fade .35s var(--ease)}
+body.globe-open #worldSvg{height:100dvh;touch-action:none}
+body.globe-open .map-zoom{bottom:calc(24px + env(safe-area-inset-bottom))}
+body.globe-open .map-legend{bottom:calc(24px + env(safe-area-inset-bottom))}
+.map-x{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:12px;z-index:3;width:38px;height:38px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(24,22,19,.72);border:1px solid rgba(237,228,214,.24);color:var(--text);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.map-x svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;display:block}
+.map-title-ov{position:absolute;top:calc(env(safe-area-inset-top) + 18px);left:20px;right:70px;z-index:2;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);pointer-events:none}
+.map-title-ov b{color:var(--gold);font-weight:400}
 .show-map{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;margin:0 0 18px;border:1px solid var(--line-strong);border-radius:12px;color:var(--text);font-size:14px;letter-spacing:.04em;background:radial-gradient(120% 140% at 50% 0%,rgba(200,169,106,.08),transparent)}
 .show-map svg{width:20px;height:20px;fill:none;stroke:var(--gold);stroke-width:1.3}
 body.globe-open .show-map{margin-bottom:12px}
@@ -354,6 +361,14 @@ body.globe-open .show-map{margin-bottom:12px}
 .ctile .flag{font-size:22px;margin-bottom:auto;align-self:flex-start;position:absolute;top:12px;left:12px}
 .ctile .nm{font-size:16px;font-weight:400}
 .ctile .sub{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-top:4px}
+.rtiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,240px);gap:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:6px;scroll-snap-type:x mandatory}
+.rtiles::-webkit-scrollbar{display:none}
+.rtile{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:6px;overflow:hidden;scroll-snap-align:start;background:var(--surface)}
+.rimg{aspect-ratio:4/3;background-size:cover;background-position:center}
+.rbody{display:grid;gap:4px;padding:12px 52px 14px 14px}
+.rbody small{font-size:11px;color:var(--gold);letter-spacing:.04em}
+.rbody b{font-weight:400;font-size:15px;line-height:1.3}
+.radd{position:absolute;right:10px;bottom:12px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(200,169,106,.6);color:var(--gold);font-size:18px;display:grid;place-items:center;padding:0}
 .foil-tile{background:linear-gradient(135deg,#3b3329,#7a6a4e 40%,#c8b48a 50%,#6e5f45 62%,#2e2821)}
 .ctile.loading{animation:breathe 1.6s ease-in-out infinite}
 .photo-credit{font-size:10px;color:var(--muted);margin:6px 0 0;text-align:right}
@@ -362,7 +377,9 @@ body.globe-open .show-map{margin-bottom:12px}
 /* Drawer */
 .drawer{position:fixed;top:64px;right:0;bottom:0;z-index:30;width:min(440px,100vw);background:var(--surface);border-left:1px solid var(--line);overflow-y:auto;transform:translateX(102%);transition:transform .55s var(--ease);box-shadow:-30px 0 80px rgba(0,0,0,.4)}
 .drawer.open{transform:none}
-.drawer-x{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line-strong);color:var(--muted);font-size:16px}
+.drawer-x{position:absolute;top:18px;right:18px;width:36px;height:36px;display:grid;place-items:center;padding:0;border-radius:50%;border:1px solid var(--line-strong);color:var(--text);background:rgba(12,11,10,.6);z-index:6}
+.drawer-x svg,.xbtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;display:block}
+.xbtn{display:none}
 .drawer-x:hover{color:var(--text);border-color:var(--text)}
 #drawerBody{padding:30px 30px 60px}
 .drawer-head{display:flex;align-items:center;gap:16px;margin-bottom:26px;padding-right:40px}
@@ -985,7 +1002,6 @@ body.ideas-on .make-public{display:block}
 .visit-ask h3{font-size:20px;font-weight:300}
 .visit-ask .hint-line{margin:0}
 .visit-ask-btns{display:flex;gap:10px;width:100%}.visit-ask-btns .btn{flex:1;white-space:nowrap;padding-left:10px;padding-right:10px}
-.grab .sx{display:none}
 .habit-fields{grid-template-columns:1fr 1fr}
 .habit-remind{grid-column:1/-1;display:none!important}
 body.remind-on .habit-remind{display:flex!important}
@@ -1005,6 +1021,38 @@ body.remind-on .hb-remind{display:flex!important}
 .hb-hist-lbl{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .hb-remind{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
 .card-prog .hb-dots i{width:9px;height:9px}
+.daily-card{position:relative;display:grid;gap:8px;justify-items:start;margin:0 0 28px;padding:20px 20px 18px;border:1px solid rgba(200,169,106,.35);border-radius:14px;background:radial-gradient(120% 140% at 100% 0%,rgba(200,169,106,.12),transparent 60%),var(--surface)}
+.daily-card.done{border-color:var(--line)}
+.dc-top{display:flex;justify-content:space-between;width:100%;gap:12px}
+.dc-count{font-size:11px;color:var(--muted)}
+.daily-card h3{font-size:24px;font-weight:300;letter-spacing:-.01em;line-height:1.2}
+.daily-card p{margin:0 0 6px;color:var(--muted);font-size:14px}
+.daily-card.done h3{color:var(--muted)}
+.settings-btn{position:absolute;top:calc(64px + 18px);right:max(40px,calc((100vw - 1280px) / 2 + 40px));z-index:5;width:40px;height:40px;display:grid;place-items:center;padding:0;border-radius:50%;border:1px solid var(--line-strong);color:var(--muted);background:rgba(12,11,10,.5)}
+.settings-btn:hover{color:var(--text)}
+.settings-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:none}
+.settings{gap:22px}
+.st-sec{display:grid;gap:12px;width:100%;padding-top:16px;border-top:1px solid var(--line)}
+.st-me{display:flex;align-items:center;gap:14px}
+.st-av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:19px;color:#111}
+.st-who{display:grid;gap:2px}.st-who b{font-weight:400;font-size:17px}.st-who small{color:var(--gold);font-size:13px}
+.st-name{display:flex;gap:10px;padding:0}.st-name input{flex:1}
+.st-chips{display:flex;flex-wrap:wrap;gap:8px}
+.st-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
+.st-row small{color:var(--muted)}
+.st-foot{font-size:11px;color:var(--muted);text-align:center;margin:4px 0 8px}
+.person{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.person .avatar{border-radius:50%;display:grid;place-items:center;color:#111;font-size:15px;flex:none}
+.pr-who{flex:1;min-width:0;display:grid;gap:2px}.pr-who b{font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pr-who small{color:var(--gold);font-size:12px}
+.pr-state{font-size:12px;color:var(--muted)}
+.requests{display:grid;margin:0 0 22px;padding:14px 16px 6px;border:1px solid rgba(200,169,106,.35);border-radius:12px}
+.requests .person:last-child{border-bottom:0}
+.my-handle{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+.my-handle b{color:var(--gold);font-weight:400}
+.find{width:100%}.find input{width:100%;font-size:16px}
+.find-results{width:100%;display:grid}
+.st-handle{display:flex;gap:10px;padding:0}.st-handle input{flex:1}
 .pp-head{display:flex;align-items:center;gap:14px}
 .pp-head h2{font-size:24px}.pp-head small{font-size:12px;color:var(--muted)}
 .pp-group{display:grid;gap:10px;margin-top:4px}
@@ -1049,6 +1097,7 @@ body.remind-on .hb-remind{display:flex!important}
 /* Bottom sheets: only used on mobile */
 .sheet,.grab{display:none}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes xIn{from{opacity:0}to{opacity:1}}
 
 /* ===================== Mobile ===================== */
 @media (max-width:760px){
@@ -1120,6 +1169,9 @@ body.remind-on .hb-remind{display:flex!important}
   .rail-arrow{display:none}
   .rail-track{grid-auto-columns:44vw;gap:10px;margin:0 -20px;padding:0 20px 4px;scroll-padding:0 20px;max-width:none;width:calc(100% + 40px)}
   #listView{overflow-x:clip}
+  .settings-btn{top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px}
+  .rtiles{margin:0 -20px;padding:0 20px 6px;scroll-padding:0 20px}
+  .daily-card{margin-bottom:22px}
 
   /* Detail pages */
   .story-hero{height:64vh;min-height:360px}
@@ -1158,16 +1210,6 @@ body.remind-on .hb-remind{display:flex!important}
   .map-frame{margin:0 -16px;border-radius:0;border-left:0;border-right:0}
   /* Scrolling past the map: vertical swipes scroll the page, sideways swipes pan the map.
      Full drag + pinch lives in the full-screen map. */
-  #worldSvg{height:min(62vh,440px);touch-action:pan-y}
-  .map-full-btn{display:block}
-  .map-full-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
-  body.map-full{overflow:hidden}
-  body.map-full .map-frame{position:fixed;inset:0;z-index:58;margin:0;border:0;border-radius:0}
-  body.map-full #worldSvg{height:100dvh;touch-action:none}
-  body.map-full .map-full-btn{display:none}
-  body.map-full .map-zoom{bottom:calc(24px + env(safe-area-inset-bottom))}
-  body.map-full .map-legend{bottom:calc(24px + env(safe-area-inset-bottom))}
-  body.map-full .map-done{display:block;position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:14px;z-index:3;padding:10px 18px;border-radius:999px;background:var(--text);color:var(--bg);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
   .map-legend{left:10px;bottom:10px;gap:10px;font-size:9px;padding:6px 10px}
   .map-hint{display:none}
   .map-zoom{right:10px;bottom:10px}
@@ -1176,15 +1218,17 @@ body.remind-on .hb-remind{display:flex!important}
 
   /* ---- Bottom sheets ---- */
   html.scroll-lock,html.scroll-lock body{overflow:hidden;overscroll-behavior:none}
+  .xbtn{display:grid;place-items:center;position:fixed;top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px;padding:0;border-radius:50%;background:rgba(24,22,19,.72);border:1px solid rgba(237,228,214,.24);color:var(--text);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:61;animation:xIn .25s .42s both}
+  .sheet .xbtn{opacity:0;pointer-events:none;transition:opacity .25s;animation:none}
+  .sheet.open .xbtn{opacity:1;pointer-events:auto;animation:none}
+  .dragging .xbtn{visibility:hidden}
   .grab{display:flex;justify-content:center;align-items:flex-start;padding-top:10px;height:28px;touch-action:none;cursor:grab;z-index:5}
-  .sx{display:grid!important;place-items:center;position:absolute;top:10px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(12,11,10,.6);border:1px solid rgba(237,228,214,.22);color:var(--text);font-size:19px;line-height:1;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:7;cursor:pointer}
-  .drawer-x{width:32px;height:32px;top:10px;right:12px;background:rgba(12,11,10,.6);color:var(--text)}
   .grab::after{content:"";width:40px;height:5px;border-radius:5px;background:rgba(237,228,214,.5);box-shadow:0 1px 6px rgba(0,0,0,.4)}
   .sheet{display:block;position:fixed;inset:0;z-index:60;pointer-events:none}
   .sheet.open{pointer-events:auto}
   .sheet-backdrop{position:absolute;inset:0;background:rgba(6,5,4,.62);opacity:0;transition:opacity .45s var(--ease)}
   .sheet.open .sheet-backdrop{opacity:1}
-  .sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:calc(100dvh - env(safe-area-inset-top) - 16px);display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translate3d(0,calc(100% + 110px),0);transition:transform .5s cubic-bezier(.32,.72,0,1),visibility 0s .5s;visibility:hidden;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+  .sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:calc(100dvh - env(safe-area-inset-top) - 60px);display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translate3d(0,calc(100% + 110px),0);transition:transform .5s cubic-bezier(.32,.72,0,1),visibility 0s .5s;visibility:hidden;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
   .sheet.open .sheet-panel{transform:none;visibility:visible;transition:transform .5s cubic-bezier(.32,.72,0,1),visibility 0s}
   .sheet-panel .grab{position:absolute;top:0;left:0;right:0}
   .sheet-x{position:absolute;top:14px;right:14px;z-index:6;width:34px;height:34px;border-radius:50%;background:rgba(12,11,10,.55);border:1px solid rgba(237,228,214,.25);color:var(--text);font-size:18px;line-height:1}
@@ -1200,7 +1244,7 @@ body.remind-on .hb-remind{display:flex!important}
   /* Map country drawer: a sheet that leaves the map visible above it */
   .drawer{top:auto;bottom:0;left:0;right:0;width:100vw;max-height:72dvh;z-index:60;border-left:0;border-radius:22px 22px 0 0;box-shadow:0 -24px 70px rgba(0,0,0,.55);transform:translateY(105%);overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom)}
   .drawer .grab{position:sticky;top:0;margin-bottom:-28px;background:linear-gradient(var(--surface) 60%,transparent)}
-  .drawer-x{top:14px;right:14px;z-index:6}
+  .drawer-x{top:12px;right:12px}
   #drawerBody{padding:22px 20px 40px}
 
   /* Dialogs slide up as bottom sheets */
@@ -1208,7 +1252,7 @@ body.remind-on .hb-remind{display:flex!important}
   dialog,#share,#ideaDlg,#onboard,#profileDlg,#inviteDlg,#joinDlg,#pasteDlg,#createDlg{width:100vw;max-width:100vw;height:auto;max-height:94dvh;top:auto;bottom:0;margin:0;border:0;border-radius:22px 22px 0 0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -24px 70px rgba(0,0,0,.55)}
   dialog[open]{animation:sheetUp .5s cubic-bezier(.32,.72,0,1)}
   /* Never under the status bar: iOS keeps touches up there, so the handle would be unreachable */
-  dialog,#share,#ideaDlg,#onboard,#profileDlg,#inviteDlg,#joinDlg,#pasteDlg,#createDlg{bottom:var(--kb,0px);max-height:min(calc(100dvh - env(safe-area-inset-top) - 16px),calc(var(--vvh,100dvh) - 12px));transition:bottom .25s var(--ease)}
+  dialog,#share,#ideaDlg,#onboard,#profileDlg,#inviteDlg,#joinDlg,#pasteDlg,#createDlg{bottom:var(--kb,0px);max-height:min(calc(100dvh - env(safe-area-inset-top) - 60px),calc(var(--vvh,100dvh) - 60px));transition:bottom .25s var(--ease)}
   dialog:focus{outline:none}
   /* Forms carry the home-indicator inset in their sticky action bar, so nothing peeks out below it */
   dialog:has(form){padding-bottom:0}
@@ -1282,6 +1326,7 @@ body.remind-on .hb-remind{display:flex!important}
 </nav>
 
 <main class="wrap">
+  <button class="settings-btn" data-open-settings aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   <header class="hero">
     <div>
       <div class="eyebrow">A personal collection</div>
@@ -1302,6 +1347,7 @@ body.remind-on .hb-remind{display:flex!important}
   <div style="height:44px"></div>
 
   <section id="listView">
+    <section class="daily-card" id="dailyCard" hidden></section>
     <div class="focus-area" id="focusArea" hidden></div>
     <div class="filters">
       <div class="chips" id="chips"></div>
@@ -1340,11 +1386,6 @@ body.remind-on .hb-remind{display:flex!important}
         <div class="map-links"><button class="link-quiet" data-g="passport">Your passport</button><button class="link-quiet" data-g="near">◎ Near me</button></div>
       </div>
       <div class="map-tools">
-        <div class="chips">
-          <button class="chip active" data-mapfilter="all">All</button>
-          <button class="chip" data-mapfilter="visited">Visited</button>
-          <button class="chip" data-mapfilter="list">On my list</button>
-        </div>
         <div class="map-search-wrap"><select class="map-search" id="mapSearch" aria-label="Find a country"><option value="">Find a country…</option></select></div>
         <button class="btn solid" data-act="share-map">Share map</button>
       </div>
@@ -1379,8 +1420,9 @@ body.remind-on .hb-remind{display:flex!important}
         <span><i style="background:#3a3224;box-shadow:inset 0 0 0 1px #c8a96a"></i>On my list</span>
       </div>
       <span class="map-hint">Drag to spin · pinch or ⌘-scroll to zoom</span>
-      <div class="map-zoom"><button data-zoom="full" class="map-full-btn" aria-label="Full screen map"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button data-zoom="in" aria-label="Zoom in">+</button><button data-zoom="out" aria-label="Zoom out">−</button><button data-zoom="reset" aria-label="Reset">⟲</button></div>
-      <button class="map-done" data-zoom="exit">Done</button>
+      <div class="map-zoom"><button data-zoom="in" aria-label="Zoom in">+</button><button data-zoom="out" aria-label="Zoom out">−</button><button data-zoom="reset" aria-label="Reset">⟲</button></div>
+      <button type="button" class="map-x" data-zoom="exit" aria-label="Close map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+      <div class="map-title-ov" id="mapOvTitle"></div>
       <div class="map-tip" id="mapTip"></div>
     </div>
     <div id="mapStrip"></div>
@@ -1398,6 +1440,7 @@ body.remind-on .hb-remind{display:flex!important}
       </div>
       <div class="friends-actions" id="friendsActions"></div>
     </div>
+    <div id="requests"></div>
     <div id="feedPane"><div class="feed" id="feed"></div></div>
     <div id="challengesPane" hidden><div id="challengeList"></div></div>
   </section>
@@ -1499,13 +1542,14 @@ body.remind-on .hb-remind{display:flex!important}
 <section id="detailView"><div id="storyContent"></div></section>
 <div class="sheet" id="sheet" aria-hidden="true">
   <div class="sheet-backdrop"></div>
+  <button type="button" class="xbtn" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
   <div class="sheet-panel" id="sheetPanel" role="dialog" aria-modal="true" aria-label="Entry">
-    <div class="grab"><button type="button" class="sx" aria-label="Close">×</button></div>
+    <div class="grab" aria-hidden="true"></div>
     <div class="sheet-body" id="sheetBody"></div>
   </div>
 </div>
 
-<aside class="drawer" id="drawer"><button class="drawer-x" aria-label="Close">×</button><div id="drawerBody"></div></aside>
+<aside class="drawer" id="drawer"><button class="drawer-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button><div id="drawerBody"></div></aside>
 
 <dialog id="proofDlg">
   <form id="proofForm" class="proof-form">
@@ -1531,6 +1575,7 @@ body.remind-on .hb-remind{display:flex!important}
 
 <dialog id="uiDlg" aria-label="Confirm"><div class="g-sheet ui-sheet" id="uiBody"></div></dialog>
 
+<dialog id="settingsDlg" aria-label="Settings"><div class="g-sheet settings" id="settingsBody"></div></dialog>
 <dialog id="focusDlg" aria-label="Focus"><div class="g-sheet" id="focusBody"></div></dialog>
 <dialog id="checkinDlg" aria-label="Check in"><div class="g-sheet checkin" id="checkinBody"></div></dialog>
 <dialog id="ritualDlg" aria-label="Your year"><div class="g-sheet ritual" id="ritualBody"></div></dialog>
@@ -2228,11 +2273,12 @@ const dismissSheet = () => (history.state?.app ? history.back() : exitDetail());
 const NO_DRAG = 'input,textarea,select,canvas,[data-no-drag],.can-frame,.ob-card,.ck-stepper,input[type=range],.rail-track,.pick-row,.opts,.chips,.qa-chips,.months';
 function dragToDismiss(panel, handleSel, dismiss, scroller = panel) {
   let y0 = null, x0 = 0, dy = 0, t0 = 0, active = false, fromHandle = false, blockClick = false;
-  const begin = () => { active = true; panel.style.transition = 'none'; };
+  const begin = () => { active = true; panel.style.transition = 'none'; panel.closest('.sheet, dialog')?.classList.add('dragging'); };
   const move = y => { dy = Math.max(0, y - y0); panel.style.transform = `translateY(${dy}px)`; };
   const finish = () => {
     if (!active) { y0 = null; return; }
     active = false; y0 = null;
+    panel.closest('.sheet, dialog')?.classList.remove('dragging');
     const fast = dy / Math.max(1, performance.now() - t0) > .6; // a flick also dismisses
     panel.style.transition = '';
     if (dy > 6) { blockClick = true; setTimeout(() => { blockClick = false; }, 350); } // the lift at the end of a drag isn't a tap; a later tap is
@@ -2276,7 +2322,7 @@ function dragToDismiss(panel, handleSel, dismiss, scroller = panel) {
   panel.addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') finish(); });
 }
 dragToDismiss($('#sheetPanel'), '.grab', dismissSheet, $('#sheetBody'));
-$('#sheet').addEventListener('click', e => { if (e.target.classList.contains('sheet-backdrop') || e.target.closest('.sx')) dismissSheet(); });
+$('#sheet').addEventListener('click', e => { if (e.target.classList.contains('sheet-backdrop') || e.target.closest('.xbtn')) dismissSheet(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && detail?.sheet && !document.querySelector('dialog[open]')) dismissSheet(); });
 // Rotating or resizing past the breakpoint: move an open sheet to the full page, or back
 mobileMQ.addEventListener('change', () => {
@@ -2317,7 +2363,7 @@ if (window.visualViewport) {
 // overflow:hidden on <html> (honoured by iOS 16+) stops scrolling without moving or re-laying-out the page;
 // pinning the body with position:fixed made iOS repaint everything and flicker as sheets opened and closed.
 function syncScrollLock() {
-  const open = useSheet() && (!!document.querySelector('dialog[open]') || $('#sheet').classList.contains('open') || $('#drawer').classList.contains('open'));
+  const open = document.body.classList.contains('globe-open') || useSheet() && (!!document.querySelector('dialog[open]') || $('#sheet').classList.contains('open') || $('#drawer').classList.contains('open'));
   document.documentElement.classList.toggle('scroll-lock', open);
 }
 new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open', 'class'] });
@@ -2325,9 +2371,10 @@ new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, att
 // Every dialog gets a grab handle; on mobile they are bottom sheets
 document.querySelectorAll('dialog').forEach(d => {
   const g = document.createElement('div');
-  g.className = 'grab'; g.innerHTML = '<button type="button" class="sx" aria-label="Close">×</button>';
-  g.querySelector('.sx').onclick = () => d.close();
+  g.className = 'grab'; g.setAttribute('aria-hidden', 'true');
   d.prepend(g);
+  d.insertAdjacentHTML('beforeend', '<button type="button" class="xbtn" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>');
+  d.lastElementChild.onclick = () => d.close();
   dragToDismiss(d, '.grab, h2', () => d.close());
   // Tapping the backdrop closes it, except forms where a stray tap would lose typing
   if (['dlg', 'mdlg', 'chDlg'].includes(d.id)) return;
@@ -2401,7 +2448,7 @@ function setView(v) {
   if (!routing && location.hash !== '#' + v) history.pushState({ app: true }, '', '#' + v);
   currentView = v;
   document.body.dataset.view = v;
-  if (v !== 'map' && document.body.classList.contains('map-full')) document.body.classList.remove('map-full');
+  if (v !== 'map' && typeof globeOpen !== 'undefined' && globeOpen) setGlobeOpen(false);
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === v));
   $('#listView').hidden = v !== 'list';
   $('#exploreView').hidden = v !== 'explore';
@@ -3706,6 +3753,8 @@ form.completed.addEventListener('change', () => {
 <script src="social.js"></script>
 <script src="wrapped.js"></script>
 <script src="goals.js"></script>
+<script src="daily.js"></script>
+<script src="settings.js"></script>
 <script>
   // Boot once every module is loaded
   $('#drawer').insertAdjacentHTML('afterbegin', '<div class="grab" aria-hidden="true"></div>');
@@ -3733,6 +3782,7 @@ form.completed.addEventListener('change', () => {
   }
   // An invite link takes priority over the first-run interests swipe
   loadSights();
+  renderDaily();
   loadWorld().then(backfillVisits).finally(() => { route(); initGoals(); if (pendingJoin) { setView('friends'); openJoin(pendingJoin); pendingJoin = null; } else if (!loadPrefs()) openOnboarding(); });
 </script>
 </body>
