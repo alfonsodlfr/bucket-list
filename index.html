@@ -73,6 +73,10 @@ body.in-detail #detailView{display:block;animation:fade .5s var(--ease)}
 .stat{text-align:right}
 .stat b{display:block;font-family:var(--serif);font-weight:200;font-size:46px;letter-spacing:-.03em;line-height:1}
 .stat span{display:block;margin-top:8px}
+.stat-go{font:inherit;color:inherit;padding:0;cursor:pointer;transition:opacity .2s}
+.stat-go:active{opacity:.6}
+.stat-go .eyebrow{text-decoration:underline;text-decoration-color:rgba(200,169,106,.5);text-underline-offset:5px}
+#listFilters{scroll-margin-top:calc(var(--bar-h,0px) + 80px)}
 .progress{width:180px}
 .bar{height:1px;background:var(--line-strong);position:relative;margin-top:14px}
 .bar i{position:absolute;inset:0 auto 0 0;width:calc(var(--p)*1%);background:var(--gold);transition:--p 1.2s var(--ease)}
@@ -402,7 +406,8 @@ body.globe-open .show-map{margin-bottom:12px}
 .visit-photo{aspect-ratio:4/3;border-radius:4px;background-size:cover;background-position:center;margin-bottom:16px;animation:in .8s var(--ease)}
 .visit-meta{display:flex;gap:14px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:12px}
 .visit-comment{margin:0 0 18px;padding-left:16px;border-left:1px solid var(--gold);font-size:17px;font-weight:300;line-height:1.55}
-.drawer-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.drawer-actions{display:flex;gap:8px;align-items:center}
+.drawer-actions .btn{flex:1;min-width:0;white-space:nowrap;padding-left:8px;padding-right:8px;letter-spacing:.08em}
 .link-quiet{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:10px 4px}
 .link-quiet:hover{color:var(--text)}
 .drawer-sec{margin-top:34px;display:grid;gap:10px}
@@ -1035,7 +1040,7 @@ body.remind-on .hb-remind{display:flex!important}
 .daily-card h3{font-size:24px;font-weight:300;letter-spacing:-.01em;line-height:1.2}
 .daily-card p{margin:0 0 6px;color:var(--muted);font-size:14px}
 .daily-card.done h3{color:var(--muted)}
-.settings-btn{position:absolute;top:calc(64px + 18px);right:max(40px,calc((100vw - 1280px) / 2 + 40px));z-index:5;width:40px;height:40px;display:grid;place-items:center;padding:0;border-radius:50%;border:1px solid var(--line-strong);color:var(--muted);background:rgba(12,11,10,.5)}
+.settings-btn{position:absolute;top:128px;right:max(40px,calc((100vw - 1280px) / 2 + 40px));z-index:5;width:40px;height:40px;display:grid;place-items:center;padding:0;border-radius:50%;border:1px solid var(--line-strong);color:var(--muted);background:rgba(12,11,10,.5)}
 .settings-btn:hover{color:var(--text)}
 .settings-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:none}
@@ -1176,7 +1181,7 @@ body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:
   .rail-arrow{display:none}
   .rail-track{grid-auto-columns:44vw;gap:10px;margin:0 -20px;padding:0 20px 4px;scroll-padding:0 20px;max-width:none;width:calc(100% + 40px)}
   #listView{overflow-x:clip}
-  .settings-btn{top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px;z-index:42}
+  .settings-btn{top:calc(var(--bar-h) + 44px);right:12px;width:38px;height:38px;z-index:42}
   .rtiles{margin:0 -20px;padding:0 20px 6px;scroll-padding:0 20px}
   .daily-card{margin-bottom:22px}
 
@@ -1346,8 +1351,8 @@ body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:
       </div>
     </div>
     <div class="stats">
-      <div class="stat"><b id="statTotal">0</b><span class="eyebrow">Entries</span></div>
-      <div class="stat"><b id="statDone">0</b><span class="eyebrow">Completed</span></div>
+      <button class="stat stat-go" data-stat-go="all" aria-label="See all entries"><b id="statTotal">0</b><span class="eyebrow">Entries</span></button>
+      <button class="stat stat-go" data-stat-go="done" aria-label="See completed entries"><b id="statDone">0</b><span class="eyebrow">Completed</span></button>
       <div class="stat progress"><b id="pct">0%</b><div class="bar" id="bar"><i></i></div></div>
     </div>
   </header>
@@ -1357,7 +1362,7 @@ body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:
   <section id="listView">
     <section class="daily-card" id="dailyCard" hidden></section>
     <div class="focus-area" id="focusArea" hidden></div>
-    <div class="filters">
+    <div class="filters" id="listFilters">
       <div class="chips" id="chips"></div>
       <div class="filters-right">
         <div class="chips" id="status">
@@ -3414,7 +3419,7 @@ function makeItem(d) {
 
 document.addEventListener('click', e => {
   if (e.target.closest('a')) return;
-  const el = e.target.closest('[data-tab],[data-type],[data-status],[data-act],[data-open-add],[data-etype],[data-idea],[data-layout],[data-rail-dir]');
+  const el = e.target.closest('[data-tab],[data-type],[data-status],[data-act],[data-open-add],[data-stat-go],[data-etype],[data-idea],[data-layout],[data-rail-dir]');
   if (!el) return;
   if (el.dataset.tab) return setView(el.dataset.tab);
   if (el.dataset.layout) { layout = el.dataset.layout; localStorage.setItem('bucketlist.layout', layout); return render(); }
@@ -3423,6 +3428,11 @@ document.addEventListener('click', e => {
     return tr.scrollBy({ left: +el.dataset.railDir * tr.clientWidth * 0.85, behavior: 'smooth' });
   }
   if (el.hasAttribute('data-open-add')) return openForm();
+  if (el.dataset.statGo) {
+    filter.status = el.dataset.statGo; filter.type = 'all'; render();
+    $('#listFilters').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   if (el.dataset.type) { filter.type = el.dataset.type; return render(); }
   if (el.dataset.status) { filter.status = el.dataset.status; return render(); }
   if (el.dataset.etype) { exploreType = el.dataset.etype; regenerateIdeas(); return renderExplore(); }

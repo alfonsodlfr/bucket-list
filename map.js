@@ -460,9 +460,9 @@ function renderDrawer() {
           <i style="${coverOf(i) ? `background-image:${cssUrl(coverOf(i))}` : `background:${toneBg(TYPES[i.type] || TYPES.other)}`}"></i>
           <span><b>${esc(i.title)}</b><small>${hasStory(i) ? 'Memory' : 'Write memory'}</small></span></button>`).join('')}</div>` : ''}
       <div class="drawer-actions">
-        <button class="btn" data-dact="edit-visit">${v.date || v.comment || v.photo ? 'Edit memory' : 'Add a memory'}</button>
+        <button class="btn" data-dact="edit-visit">${v.date || v.comment || v.photo ? 'Edit memory' : 'Add memory'}</button>
         <button class="btn" data-dact="share-country">Share</button>
-        <button class="link-quiet" data-dact="unvisit">Not visited</button>
+        <button class="btn" data-dact="unvisit">Not visited</button>
       </div>`;
   } else {
     main = `<button class="btn solid wide been-here" data-dact="mark-visited">✓  I've been here</button>`;
