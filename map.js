@@ -19,7 +19,6 @@ const loadWorld = () => worldLoad ||= fetch('countries.json').then(r => r.json()
 const MAP_W = 1000, MAP_H = 440;
 const UN_COUNTRIES = 195;
 let mapFilter = 'all';
-let vb = { x: 0, y: 0, w: MAP_W, h: MAP_H };
 let entryCountries = new Map();   // item.id -> [country ids]
 let drawerId = null;
 
@@ -167,7 +166,6 @@ function buildMap() {
 async function renderMap() {
   await loadWorld();
   if (!mapBuilt) buildMap();
-  if (!vbReady && $('#worldSvg').clientWidth) { resetVB(); vbReady = true; }
   computeEntryCountries();
   const onList = listCountries();
   const visitedIds = Object.keys(visits).filter(id => WORLD.byId[id]);
@@ -184,7 +182,7 @@ async function renderMap() {
   $('#pinsG').innerHTML = [...onList].map(id => {
     const c = WORLD.byId[id];
     const hidden = mapFilter === 'visited' && !visits[id];
-    return hidden ? '' : `<g class="pin" transform="translate(${c.lx} ${c.ly})"><circle class="ring" r="6"/><circle r="2.6"/></g>`;
+    return hidden ? '' : `<g class="pin" data-id="${id}"><circle class="ring" r="6"/><circle r="2.6"/></g>`;
   }).join('');
 
   const conts = new Set(visitedIds.map(id => WORLD.byId[id].continent));
@@ -195,6 +193,7 @@ async function renderMap() {
   const missing = visitedIds.filter(id => countryPhotos.urls[id] === undefined && (!countryPhotos.files || countryPhotos.files[id]));
   if (missing.length && !cpLoading) loadCountryPhotos(missing);
   if ($('#mapSearch').options.length < 2) fillCountries();
+  drawGlobe();
   renderMapStrip(visitedIds, onList);
   if (drawerId) renderDrawer();
   if (typeof checkStamps === 'function') checkStamps();
@@ -212,62 +211,99 @@ function renderMapStrip(visitedIds, onList) {
   const showVis = mapFilter !== 'list', showList = mapFilter !== 'visited';
   $('#mapStrip').innerHTML =
     (showVis ? `<div class="strip-head"><h3>Visited</h3><span class="eyebrow">${vis.length}</span></div>
-      <div class="ctiles">${vis.length ? vis.map(v => tile(v.id, monthLabel(v.date) || 'Visited', visitPhotoOf(v.id))).join('') : `<p class="muted-note">Tap any country on the map to mark it as visited.</p>`}</div>` : '') +
+      <div class="ctiles">${vis.length ? vis.map(v => tile(v.id, monthLabel(v.date) || 'Visited', visitPhotoOf(v.id))).join('') : `<p class="muted-note">Open the map and tap a country, or use Find a country.</p>`}</div>` : '') +
     (showList ? `<div class="strip-head"><h3>On my list</h3><span class="eyebrow">${list.length}</span></div>
       <div class="ctiles">${list.length ? list.map(id => tile(id, `${entriesIn(id).filter(i => !i.done).length} on the list`, entriesIn(id).map(entryCover).find(Boolean))).join('') : `<p class="muted-note">Countries from your open entries appear here.</p>`}</div>` : '');
 }
 
-/* ---------- Zoom & pan ---------- */
-function applyVB() { $('#worldSvg').setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); }
-// The visible window follows the element's shape: wide on desktop, tall on phones (then you pan sideways)
-const aspect = () => { const el = $('#worldSvg'); return el.clientWidth && el.clientHeight ? el.clientHeight / el.clientWidth : MAP_H / MAP_W; };
-const maxVW = () => Math.min(MAP_W, MAP_H / aspect());
-function clampVB() {
-  const a = aspect();
-  vb.w = Math.min(maxVW(), Math.max(70, vb.w)); vb.h = vb.w * a;
-  vb.x = Math.min(MAP_W - vb.w, Math.max(0, vb.x)); vb.y = Math.min(MAP_H - vb.h, Math.max(0, vb.y));
+/* ---------- Globe ----------
+   Countries as longitude/latitude rings (globe.json, made once from countries.json), drawn with an orthographic
+   projection into the same SVG paths, so styling, hover and taps work as before. Drag spins, pinch zooms. */
+let GEO = null;
+const loadGeo = () => GEO ? Promise.resolve(GEO) : fetch('globe.json').then(r => r.json()).then(d => (GEO = d));
+const RAD = Math.PI / 180;
+const G = { lon: 15, lat: 22, k: 1, R: 440, spin: true };
+let globeOpen = false;
+function proj(lon, lat) {
+  const l = (lon - G.lon) * RAD, p = lat * RAD, p0 = G.lat * RAD;
+  const cosc = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
+  let x = Math.cos(p) * Math.sin(l), y = Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l);
+  if (cosc < 0) { const n = Math.hypot(x, y) || 1; x /= n; y /= n; } // the far side folds onto the rim
+  const r = G.R * G.k;
+  return [500 + x * r, 500 - y * r, cosc >= 0];
 }
-function resetVB() {
-  const w = maxVW();
-  vb = { x: w < MAP_W ? 520 - w / 2 : 0, y: 0, w, h: 0 }; // on narrow screens start centred on Europe/Africa
-  clampVB(); applyVB();
+function ringD(ring) {
+  let d = '', seen = false;
+  for (let k = 0; k < ring.length; k += 2) {
+    const [x, y, vis] = proj(ring[k], ring[k + 1]);
+    seen ||= vis;
+    d += (k ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
+  }
+  return seen ? d + 'Z' : '';
 }
-let vbReady = false;
-window.addEventListener('resize', () => { if (!$('#mapView').hidden) { clampVB(); applyVB(); } });
-function zoomAt(f, cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2) {
-  const nw = Math.min(maxVW(), Math.max(70, vb.w * f));
-  vb.x = cx - (cx - vb.x) * nw / vb.w; vb.y = cy - (cy - vb.y) * nw / vb.w; vb.w = nw;
-  clampVB(); applyVB();
+let graticule = null;
+function drawGlobe() {
+  if (!GEO || !globeOpen) return;
+  const r = G.R * G.k;
+  $('#globeSea').setAttribute('r', r); $('#globeRim').setAttribute('r', r);
+  for (const el of document.querySelectorAll('#countriesG path')) el.setAttribute('d', (GEO[el.dataset.id]?.r || []).map(ringD).join(''));
+  // Meridians and parallels every 30°, only the near side
+  graticule ||= [...[-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150, 180].map(lon => Array.from({ length: 37 }, (_, i) => [lon, -90 + i * 5])),
+    ...[-60, -30, 0, 30, 60].map(lat => Array.from({ length: 73 }, (_, i) => [-180 + i * 5, lat]))];
+  $('#gratG').setAttribute('d', graticule.map(line => { let d = '', pen = false; for (const [lo, la] of line) { const [x, y, v] = proj(lo, la); d += v ? (pen ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) : ''; pen = v; } return d; }).join(''));
+  for (const pin of document.querySelectorAll('#pinsG .pin')) {
+    const c = GEO[pin.dataset.id]?.c; if (!c) continue;
+    const [x, y, v] = proj(c[0], c[1]);
+    pin.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); pin.style.display = v ? '' : 'none';
+  }
 }
+let globeRaf = null, lastT = 0;
+function globeLoop(t) {
+  globeRaf = null;
+  if (!globeOpen || $('#mapView').hidden) return;
+  if (G.spin && !drawerId) { G.lon -= Math.min(50, t - (lastT || t)) * 0.004; drawGlobe(); } // a slow turn until you touch it
+  lastT = t;
+  if (G.spin) globeRaf = requestAnimationFrame(globeLoop);
+}
+const kickGlobe = () => { if (!globeRaf) { lastT = 0; globeRaf = requestAnimationFrame(globeLoop); } };
+async function setGlobeOpen(on) {
+  globeOpen = on;
+  document.body.classList.toggle('globe-open', on);
+  $('#showMap').setAttribute('aria-expanded', on);
+  $('#showMap span').textContent = on ? 'Hide map' : 'Show map';
+  if (on) { await loadGeo(); drawGlobe(); kickGlobe(); }
+}
+function zoomAt(f) { G.k = Math.min(8, Math.max(1, G.k / f)); drawGlobe(); }
+function resetVB() { G.k = 1; drawGlobe(); }
+// Turn the globe to a country (and closer in for small ones)
 function zoomTo(id) {
-  const el = $(`#countriesG [data-id="${id}"]`);
-  if (!el) return;
-  const b = el.getBBox();
-  if (b.width > 600) return; // countries spanning the antimeridian: keep the world view
-  const a = aspect();
-  const w = Math.max(160, Math.max(b.width, b.height / a) * 2.4);
-  vb = { x: b.x + b.width / 2 - w / 2, y: b.y + b.height / 2 - w * a / 2, w, h: 0 };
-  clampVB(); applyVB();
+  const c = GEO?.[id]?.c; if (!c || !globeOpen) return;
+  G.spin = false;
+  const from = { lon: G.lon, lat: G.lat, k: G.k };
+  let dl = ((c[0] - from.lon + 540) % 360) - 180;
+  const toK = Math.max(1, Math.min(3, WORLD.byId[id] ? 2.2 : 1)), t0 = performance.now();
+  const step = t => {
+    const e = Math.min(1, (t - t0) / 800), s = 1 - Math.pow(1 - e, 3);
+    G.lon = from.lon + dl * s; G.lat = from.lat + (Math.max(-60, Math.min(60, c[1])) - from.lat) * s; G.k = from.k + (toK - from.k) * s;
+    drawGlobe();
+    if (e < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
-function svgPoint(e) {
-  const svg = $('#worldSvg'), pt = svg.createSVGPoint();
-  pt.x = e.clientX; pt.y = e.clientY;
-  return pt.matrixTransform(svg.getScreenCTM().inverse());
-}
+const pxPerUnit = () => { const s = $('#worldSvg'); return Math.min(s.clientWidth, s.clientHeight) / 1000 || 0.4; };
 let drag = null;
 let fillCountries = () => {};
 function initMapInteractions() {
   const svg = $('#worldSvg'), tip = $('#mapTip');
+  $('#showMap').addEventListener('click', () => setGlobeOpen(!globeOpen));
   svg.addEventListener('wheel', e => {
     if (!e.ctrlKey && !e.metaKey) return; // normal scrolling keeps scrolling the page; pinch / ⌘-scroll zooms
-    e.preventDefault();
-    const p = svgPoint(e);
-    zoomAt(Math.exp(e.deltaY * 0.01), p.x, p.y);
+    e.preventDefault(); zoomAt(Math.exp(e.deltaY * 0.01));
   }, { passive: false });
-  // Drag to pan; two fingers to pinch-zoom
   const pts = new Map();
   let pinch = null;
   svg.addEventListener('pointerdown', e => {
+    G.spin = false;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false };
     if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); drag && (drag.moved = true); }
@@ -277,14 +313,16 @@ function initMapInteractions() {
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 2 && pinch) {
       const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-      const mid = svgPoint({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
-      zoomAt(pinch / d, mid.x, mid.y); pinch = d;
-      return;
+      zoomAt(pinch / d); pinch = d; return;
     }
     if (drag) {
-      const k = vb.w / svg.clientWidth, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
-      if (drag.moved) { vb.x -= dx * k; vb.y -= dy * k; clampVB(); applyVB(); }
+      if (drag.moved) {
+        const deg = 1 / (G.R * G.k * pxPerUnit()) / RAD;
+        G.lon -= dx * deg; G.lat = Math.max(-80, Math.min(80, G.lat + dy * deg));
+        drawGlobe();
+      }
       drag.x = e.clientX; drag.y = e.clientY;
     }
   });
@@ -297,7 +335,7 @@ function initMapInteractions() {
     if (p) openDrawer(p.dataset.id); else closeDrawer();
   });
   svg.addEventListener('pointerover', e => {
-    if (e.pointerType === 'touch') return; // no hover tooltips on touch; tapping opens the panel
+    if (e.pointerType === 'touch') return;
     const p = e.target.closest('path[data-id]');
     if (!p) return tip.classList.remove('on');
     const c = WORLD.byId[p.dataset.id], v = visits[c.id], n = entriesIn(c.id).filter(i => !i.done).length;
@@ -309,15 +347,10 @@ function initMapInteractions() {
     tip.style.transform = `translate(${e.clientX - r.left + 14}px, ${e.clientY - r.top + 14}px)`;
   });
   svg.addEventListener('pointerleave', () => tip.classList.remove('on'));
-
   document.querySelector('#mapFrame').addEventListener('click', e => {
     const z = e.target.closest('[data-zoom]')?.dataset.zoom;
     if (z === 'in') zoomAt(0.65); else if (z === 'out') zoomAt(1.55); else if (z === 'reset') resetVB();
-    else if (z === 'full' || z === 'exit') {
-      // Phones: the full-screen map is where drag + pinch work without fighting page scroll
-      document.body.classList.toggle('map-full', z === 'full');
-      requestAnimationFrame(() => { clampVB(); applyVB(); });
-    }
+    else if (z === 'full' || z === 'exit') { document.body.classList.toggle('map-full', z === 'full'); requestAnimationFrame(drawGlobe); }
   });
   // Find a country: a native dropdown (the iPhone shows its picker wheel), every country A–Z, visited ones marked
   const sel = $('#mapSearch');
@@ -721,21 +754,22 @@ async function composeMapCard() {
   ctx.restore();
   return cv;
 }
-async function composeCountryCard(id) {
+async function composeCountryCard(id, style) {
   await loadWorld();
   const c = WORLD.byId[id], v = visits[id];
   // Reuse the story-card renderer with a synthetic entry
   return composeStory({
     id: 'country-' + id, pill: '✓  Been here', doneAt: v.at, createdAt: v.at, title: `${flagOf(c.iso2)} ${c.name}`.trim(), place: c.continent, image: visitPhotoOf(id),
     memory: { date: v.date ? v.date + '-15' : null, highlight: v.comment || '', photos: visitPhotoOf(id) ? [visitPhotoOf(id)] : [] },
-  }, v.comment ? 'quote' : 'minimal');
+  }, style || (v.comment ? 'quote' : 'minimal'));
 }
 function openMapShare() {
   openShareWith({ title: 'My map', desc: 'A 1080 × 1920 story of every country you\'ve visited, with your latest photos.', filename: 'the-list-world-map', compose: () => composeMapCard() });
 }
 function openCountryShare(id) {
   const c = WORLD.byId[id];
-  openShareWith({ title: c.name, desc: 'A 1080 × 1920 story with your photo and note from this country.', filename: `the-list-${c.name}`, compose: () => composeCountryCard(id) });
+  const styles = [...(visits[id]?.comment ? ['quote'] : []), 'minimal', 'polaroid', 'cover', 'ticket'];
+  openShareWith({ title: c.name, desc: 'A 1080 × 1920 story with your photo and note from this country. Tap the preview for another look.', filename: `the-list-${c.name}`, compose: style => composeCountryCard(id, style), styles });
 }
 
 /* ---------- Wire up ---------- */
@@ -744,7 +778,7 @@ document.addEventListener('click', e => {
   const f = e.target.closest('[data-mapfilter]');
   if (f) { mapFilter = f.dataset.mapfilter; renderMap(); }
   const t = e.target.closest('[data-country]');
-  if (t) { openDrawer(t.dataset.country); zoomTo(t.dataset.country); window.scrollTo({ top: $('#mapFrame').offsetTop - 90, behavior: 'smooth' }); }
+  if (t) { openDrawer(t.dataset.country); zoomTo(t.dataset.country); if (globeOpen) window.scrollTo({ top: $('#mapFrame').offsetTop - 90, behavior: 'smooth' }); }
   if (e.target.closest('[data-act="share-map"]')) openMapShare();
 });
 initMapInteractions();

@@ -224,6 +224,7 @@ body.calm .moment{transition:none}
 .moment .date::before{content:"";position:absolute;inset:-18px -36px;background:radial-gradient(closest-side,var(--bg) 72%,transparent);z-index:-1}
 .moment .date b{font-size:64px;font-weight:200;letter-spacing:-.04em;line-height:.8;color:var(--text)}
 .moment .date span{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.moment-text h3[data-act]{cursor:pointer}
 .moment-text h3{font-size:34px;font-weight:300;letter-spacing:-.02em;line-height:1.1;margin-bottom:10px}
 .moment-text .where{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:22px}
 .moment-text blockquote{margin:0 0 18px;padding-left:18px;border-left:1px solid var(--gold);font-size:18px;font-weight:300;line-height:1.5;color:var(--text)}
@@ -313,7 +314,12 @@ body:not([data-view="list"]) .hero,body:not([data-view="list"]) .hero + div{disp
 .map-search{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:22px!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239a9184' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 2px center;border:0;border-bottom:1px solid var(--line-strong);color:var(--text);font:inherit;font-size:14px;padding:8px 0;width:190px;outline:none}
 .map-search:focus{border-color:var(--gold)}
 .map-frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#16130f,#0a0908)}
-#worldSvg{display:block;width:100%;height:auto;aspect-ratio:1000/440;touch-action:none;user-select:none;cursor:grab}
+#worldSvg{display:block;width:100%;height:min(72vh,640px);touch-action:none;user-select:none;cursor:grab}
+.map-frame{display:none}
+body.globe-open .map-frame{display:block;animation:in .5s var(--ease)}
+.show-map{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;margin:0 0 18px;border:1px solid var(--line-strong);border-radius:12px;color:var(--text);font-size:14px;letter-spacing:.04em;background:radial-gradient(120% 140% at 50% 0%,rgba(200,169,106,.08),transparent)}
+.show-map svg{width:20px;height:20px;fill:none;stroke:var(--gold);stroke-width:1.3}
+body.globe-open .show-map{margin-bottom:12px}
 #worldSvg:active{cursor:grabbing}
 #countriesG path{stroke:#0e0d0b;stroke-width:.5;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill .6s var(--ease),opacity .5s var(--ease),filter .3s}
 #countriesG path.foil{fill:url(#foil)}
@@ -434,6 +440,8 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .share-preview{position:relative;width:270px;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:var(--bg);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px var(--line);display:grid;place-items:center;color:var(--muted);font-size:12px}
 .share-preview img,.share-preview canvas{width:100%;height:100%;display:block;animation:in .8s var(--ease)}
 .share-preview.can-frame{cursor:grab;touch-action:none;user-select:none}
+.share-preview.can-cycle:not(.can-frame){cursor:pointer}
+.share-preview.can-cycle:not(.can-frame)::after{content:"Tap for another look";position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:9px;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none}
 .share-preview.can-frame.dragging{cursor:grabbing}
 .share-preview canvas{animation:none}
 .photo-pick{margin:-8px 0 18px}
@@ -977,6 +985,26 @@ body.ideas-on .make-public{display:block}
 .visit-ask h3{font-size:20px;font-weight:300}
 .visit-ask .hint-line{margin:0}
 .visit-ask-btns{display:flex;gap:10px;width:100%}.visit-ask-btns .btn{flex:1;white-space:nowrap;padding-left:10px;padding-right:10px}
+.grab .sx{display:none}
+.habit-fields{grid-template-columns:1fr 1fr}
+.habit-remind{grid-column:1/-1;display:none!important}
+body.remind-on .habit-remind{display:flex!important}
+.hb-remind{display:none!important}
+body.remind-on .hb-remind{display:flex!important}
+.hb-dots{display:flex;gap:6px;align-items:center}
+.hb-dots i{width:12px;height:12px;border-radius:50%;border:1px solid rgba(200,169,106,.6)}
+.hb-dots i.on{background:var(--gold);border-color:var(--gold)}
+.hb-week{display:grid;gap:12px}
+.hb-top{display:flex;align-items:baseline;gap:10px}
+.hb-top b{font-size:40px;font-weight:200;line-height:1}
+.hb-top span{color:var(--muted);font-size:14px}
+.hb-hist{display:flex;gap:6px;align-items:flex-end}
+.hb-hist i{flex:1;height:26px;border-radius:4px;background:rgba(237,228,214,.07);position:relative}
+.hb-hist i.hit{background:rgba(200,169,106,.55)}
+.hb-hist i.now{outline:1px solid var(--gold)}
+.hb-hist-lbl{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hb-remind{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+.card-prog .hb-dots i{width:9px;height:9px}
 .pp-head{display:flex;align-items:center;gap:14px}
 .pp-head h2{font-size:24px}.pp-head small{font-size:12px;color:var(--muted)}
 .pp-group{display:grid;gap:10px;margin-top:4px}
@@ -1130,7 +1158,7 @@ body.ideas-on .make-public{display:block}
   .map-frame{margin:0 -16px;border-radius:0;border-left:0;border-right:0}
   /* Scrolling past the map: vertical swipes scroll the page, sideways swipes pan the map.
      Full drag + pinch lives in the full-screen map. */
-  #worldSvg{aspect-ratio:auto;height:min(48vh,420px);touch-action:pan-y}
+  #worldSvg{height:min(62vh,440px);touch-action:pan-y}
   .map-full-btn{display:block}
   .map-full-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
   body.map-full{overflow:hidden}
@@ -1149,6 +1177,8 @@ body.ideas-on .make-public{display:block}
   /* ---- Bottom sheets ---- */
   html.scroll-lock,html.scroll-lock body{overflow:hidden;overscroll-behavior:none}
   .grab{display:flex;justify-content:center;align-items:flex-start;padding-top:10px;height:28px;touch-action:none;cursor:grab;z-index:5}
+  .sx{display:grid!important;place-items:center;position:absolute;top:10px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(12,11,10,.6);border:1px solid rgba(237,228,214,.22);color:var(--text);font-size:19px;line-height:1;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:7;cursor:pointer}
+  .drawer-x{width:32px;height:32px;top:10px;right:12px;background:rgba(12,11,10,.6);color:var(--text)}
   .grab::after{content:"";width:40px;height:5px;border-radius:5px;background:rgba(237,228,214,.5);box-shadow:0 1px 6px rgba(0,0,0,.4)}
   .sheet{display:block;position:fixed;inset:0;z-index:60;pointer-events:none}
   .sheet.open{pointer-events:auto}
@@ -1200,7 +1230,7 @@ body.ideas-on .make-public{display:block}
   .idea-foot{padding:16px 20px 20px}
   .idea-foot .btn{flex:1}
   .idea-foot .spacer,#ideaClose{display:none}
-  .sheet-x,.drawer-x,#shareClose,.ob-edit-foot [data-ob="close"]{display:none}
+  .sheet-x,#shareClose,.ob-edit-foot [data-ob="close"]{display:none}
   form{padding:30px 20px 0;gap:20px}
   form h2{font-size:28px}
   .form-actions{position:sticky;bottom:0;z-index:2;margin:6px -20px 0;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
@@ -1229,7 +1259,7 @@ body.ideas-on .make-public{display:block}
   .frame-ctl .hint-line{display:none}
   .share-side .btns{flex-wrap:nowrap}
   .share-side .btns .btn{flex:1;padding-left:12px;padding-right:12px}
-  .share-preview.can-frame::after{content:"Drag to move · pinch to zoom";position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.75);text-shadow:0 1px 6px rgba(0,0,0,.8);pointer-events:none;opacity:1;transition:opacity .4s}
+  .share-preview.can-frame::after{content:"Tap for another look · drag to move";position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.75);text-shadow:0 1px 6px rgba(0,0,0,.8);pointer-events:none;opacity:1;transition:opacity .4s}
   .share-preview.can-frame.dragging::after{opacity:0}
   .toast{bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));max-width:calc(100vw - 40px);text-align:center}
 }
@@ -1319,8 +1349,9 @@ body.ideas-on .make-public{display:block}
         <button class="btn solid" data-act="share-map">Share map</button>
       </div>
     </div>
+    <button class="show-map" id="showMap" aria-expanded="false" aria-controls="mapFrame"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 2.6 2.8 15.4 0 18M12 3c-2.8 2.6-2.8 15.4 0 18"/></svg><span>Show map</span></button>
     <div class="map-frame" id="mapFrame">
-      <svg id="worldSvg" viewBox="0 0 1000 440" preserveAspectRatio="xMidYMid meet">
+      <svg id="worldSvg" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="foil" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1000" y2="440">
             <stop offset="0" stop-color="#26241f"/><stop offset=".3" stop-color="#36332d"/><stop offset=".45" stop-color="#4a463e"/>
@@ -1334,15 +1365,20 @@ body.ideas-on .make-public{display:block}
             <stop offset="0" stop-color="#e9dcc2"/><stop offset=".5" stop-color="#d8c49c"/><stop offset="1" stop-color="#e6d6b6"/>
           </linearGradient>
         </defs>
+        <radialGradient id="seaGrad" cx="42%" cy="36%" r="70%"><stop offset="0" stop-color="#1d1a15"/><stop offset=".75" stop-color="#110f0c"/><stop offset="1" stop-color="#080706"/></radialGradient>
+        <radialGradient id="rimGlow" cx="50%" cy="50%" r="50%"><stop offset=".92" stop-color="rgba(200,169,106,0)"/><stop offset="1" stop-color="rgba(200,169,106,.18)"/></radialGradient>
+        <circle id="globeSea" cx="500" cy="500" r="440" fill="url(#seaGrad)"/>
+        <path id="gratG" fill="none" stroke="rgba(237,228,214,.06)" stroke-width=".6" vector-effect="non-scaling-stroke"/>
         <g id="countriesG"></g>
         <g id="pinsG"></g>
+        <circle id="globeRim" cx="500" cy="500" r="440" fill="url(#rimGlow)" stroke="rgba(200,169,106,.25)" stroke-width="1" vector-effect="non-scaling-stroke" pointer-events="none"/>
       </svg>
       <div class="map-legend">
         <span><i style="background:linear-gradient(135deg,#36332d,#4a463e)"></i>Not yet</span>
         <span><i style="background:#ddc9a3"></i>Visited</span>
         <span><i style="background:#3a3224;box-shadow:inset 0 0 0 1px #c8a96a"></i>On my list</span>
       </div>
-      <span class="map-hint">Pinch or ⌘-scroll to zoom · drag to pan</span>
+      <span class="map-hint">Drag to spin · pinch or ⌘-scroll to zoom</span>
       <div class="map-zoom"><button data-zoom="full" class="map-full-btn" aria-label="Full screen map"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button data-zoom="in" aria-label="Zoom in">+</button><button data-zoom="out" aria-label="Zoom out">−</button><button data-zoom="reset" aria-label="Reset">⟲</button></div>
       <button class="map-done" data-zoom="exit">Done</button>
       <div class="map-tip" id="mapTip"></div>
@@ -1389,7 +1425,12 @@ body.ideas-on .make-public{display:block}
     </div>
     <label class="full">Description<textarea name="description" maxlength="600" placeholder="Why it matters"></textarea></label>
     <div class="full field kind-field">Kind of goal
-      <div class="seg" id="kindSeg" role="group"><button type="button" data-kind="once" class="on">One-off</button><button type="button" data-kind="progress">Track progress</button></div>
+      <div class="seg" id="kindSeg" role="group"><button type="button" data-kind="once" class="on">One-off</button><button type="button" data-kind="progress">Track progress</button><button type="button" data-kind="habit">Weekly</button></div>
+      <div class="prog-fields habit-fields" id="habitFields" hidden>
+        <label>Times a week<input name="habitTimes" type="number" inputmode="numeric" min="1" max="21" step="1" value="3"></label>
+        <label>Check on<select name="habitBy"><option value="4">Thursday</option><option value="5">Friday</option><option value="6" selected>Saturday</option><option value="0">Sunday</option></select></label>
+        <label class="switch habit-remind"><input type="checkbox" name="habitRemind" checked><span class="track"></span><span class="sw-text"><b>Remind me</b><small>A notification that morning if you're behind for the week</small></span></label>
+      </div>
       <div class="prog-fields" id="progFields" hidden>
         <label>Target<input name="goalTarget" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 12"></label>
         <label>Unit<select name="unit" id="unitSelect"></select></label>
@@ -1459,7 +1500,7 @@ body.ideas-on .make-public{display:block}
 <div class="sheet" id="sheet" aria-hidden="true">
   <div class="sheet-backdrop"></div>
   <div class="sheet-panel" id="sheetPanel" role="dialog" aria-modal="true" aria-label="Entry">
-    <div class="grab" aria-hidden="true"></div>
+    <div class="grab"><button type="button" class="sx" aria-label="Close">×</button></div>
     <div class="sheet-body" id="sheetBody"></div>
   </div>
 </div>
@@ -2235,7 +2276,7 @@ function dragToDismiss(panel, handleSel, dismiss, scroller = panel) {
   panel.addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') finish(); });
 }
 dragToDismiss($('#sheetPanel'), '.grab', dismissSheet, $('#sheetBody'));
-$('#sheet').addEventListener('click', e => { if (e.target.classList.contains('sheet-backdrop')) dismissSheet(); });
+$('#sheet').addEventListener('click', e => { if (e.target.classList.contains('sheet-backdrop') || e.target.closest('.sx')) dismissSheet(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && detail?.sheet && !document.querySelector('dialog[open]')) dismissSheet(); });
 // Rotating or resizing past the breakpoint: move an open sheet to the full page, or back
 mobileMQ.addEventListener('change', () => {
@@ -2284,7 +2325,8 @@ new MutationObserver(syncScrollLock).observe(document.body, { subtree: true, att
 // Every dialog gets a grab handle; on mobile they are bottom sheets
 document.querySelectorAll('dialog').forEach(d => {
   const g = document.createElement('div');
-  g.className = 'grab'; g.setAttribute('aria-hidden', 'true');
+  g.className = 'grab'; g.innerHTML = '<button type="button" class="sx" aria-label="Close">×</button>';
+  g.querySelector('.sx').onclick = () => d.close();
   d.prepend(g);
   dragToDismiss(d, '.grab, h2', () => d.close());
   // Tapping the backdrop closes it, except forms where a stray tap would lose typing
@@ -2480,20 +2522,20 @@ function renderLane() {
     return `${yearHtml}
       <article class="moment ${hasStory(i) ? '' : 'unwritten'}">
         <div class="date">${datePrec(i) === 'year' ? `<b>${d.getFullYear()}</b><span>During the year</span>` : datePrec(i) === 'month' ? `<b>${MONTHS[d.getMonth()].slice(0, 3)}</b><span>${d.getFullYear()}</span>` : `<b>${String(d.getDate()).padStart(2, '0')}</b><span>${MONTHS[d.getMonth()]} ${d.getFullYear()}</span>`}</div>
-        <div class="photos" data-act="story" data-id="${i.id}">
+        <div class="photos" data-act="view" data-id="${i.id}">
           <div class="main" style="background-image:${cover ? cssUrl(cover) + ',' : ''}${toneBg(t)}"></div>
           ${second ? `<div class="sub" style="background-image:${cssUrl(second)}"></div>` : ''}
           ${photos.length > 1 ? `<span class="count">${photos.length} photographs</span>` : ''}
         </div>
         <div class="moment-text">
-          <h3>${esc(i.title)}</h3>
+          <h3 data-act="view" data-id="${i.id}">${esc(i.title)}</h3>
           ${i.place ? `<div class="where">${esc(i.place)}</div>` : `<div class="where">${t.label}</div>`}
           ${m.highlight ? `<blockquote>${esc(m.highlight)}</blockquote>` : ''}
           ${m.story ? `<p>${esc(m.story)}</p>` : hasStory(i) ? '' : `<p class="hint">This one is still waiting to be written down.</p>`}
           ${m.with ? `<div class="with">With ${esc(m.with)}</div>` : ''}
           <div class="links">
             ${hasStory(i)
-              ? `<button class="primary" data-act="story" data-id="${i.id}">Memory</button><button data-act="share" data-id="${i.id}">Share</button><button data-act="memory" data-id="${i.id}">Edit</button>`
+              ? `<button class="primary" data-act="story" data-id="${i.id}">Open memory</button><button data-act="share" data-id="${i.id}">Share</button><button data-act="memory" data-id="${i.id}">Edit</button>`
               : `<button class="primary" data-act="memory" data-id="${i.id}">Write memory</button>`}
           </div>
         </div>
@@ -3077,12 +3119,18 @@ function persistFrame() {
   $('#frameReset').onclick = () => { Object.assign(shareFrame, FRAME0); $('#frameZoom').value = 1; persistFrame(); renderShare(); };
 })();
 // Generic share dialog: any 1080×1920 composer (used by the map and country cards)
-function openShareWith({ title, desc, filename, compose }) {
+function openShareWith({ title, desc, filename, compose, styles = null }) {
   shareCtx = { title, filename, compose };
   shareFrame = null; setFraming(false);
   $('#photoPick').hidden = true;
   $('#sharePreview').innerHTML = '';
-  $('#shareOpts').hidden = true;
+  // Layouts to choose from (only the ones given); none means a single fixed design
+  $('#shareOpts').hidden = !styles;
+  if (styles) {
+    shareStyle = styles[0];
+    document.querySelectorAll('[data-share-style]').forEach(b => { b.hidden = !styles.includes(b.dataset.shareStyle); b.disabled = false; b.classList.toggle('active', b.dataset.shareStyle === shareStyle); });
+  }
+  $('#sharePreview').classList.toggle('can-cycle', !!styles);
   $('#shareHint').hidden = true;
   $('#shareDesc').textContent = desc;
   $('#shareTitle').textContent = title;
@@ -3140,7 +3188,9 @@ function openShare(it) {
   $('#shareDesc').textContent = 'A 1080 × 1920 story in five looks: a photo dump, a polaroid, a magazine cover or a boarding pass.';
   const hasNote = !!noteText(it);
   shareStyle = hasNote ? 'quote' : 'minimal';
+  $('#sharePreview').classList.add('can-cycle');
   document.querySelectorAll('[data-share-style]').forEach(b => {
+    b.hidden = false;
     b.classList.toggle('active', b.dataset.shareStyle === shareStyle);
     if (b.dataset.shareStyle === 'quote') b.disabled = !hasNote;
   });
@@ -3156,6 +3206,25 @@ $('#shareOpts').addEventListener('click', e => {
   document.querySelectorAll('[data-share-style]').forEach(x => x.classList.toggle('active', x === b));
   renderShare();
 });
+// Tapping the preview (without dragging the photo) shows the next layout
+function nextShareStyle() {
+  const opts = [...document.querySelectorAll('#shareOpts [data-share-style]')].filter(b => !b.hidden && !b.disabled);
+  if ($('#shareOpts').hidden || opts.length < 2) return;
+  const i = opts.findIndex(b => b.dataset.shareStyle === shareStyle);
+  const b = opts[(i + 1) % opts.length];
+  shareStyle = b.dataset.shareStyle;
+  opts.forEach(x => x.classList.toggle('active', x === b));
+  b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  renderShare();
+}
+(() => {
+  const prev = $('#sharePreview');
+  let tap = null;
+  prev.addEventListener('pointerdown', e => { tap = e.isPrimary ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+  prev.addEventListener('pointermove', e => { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null; });
+  prev.addEventListener('pointerup', () => { if (tap && performance.now() - tap.t < 450) nextShareStyle(); tap = null; });
+  prev.addEventListener('pointercancel', () => { tap = null; });
+})();
 const shareFileName = () => `${shareCtx.filename.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
 function downloadShare() {
   const a = document.createElement('a');
@@ -3281,7 +3350,7 @@ function applyCountries(it, ids) {
 function makeItem(d) {
   return { id: crypto.randomUUID(), title: d.title, description: d.description || '', type: d.type,
     place: d.place || '', lat: d.lat ?? null, lng: d.lng ?? null, image: d.image ?? null, imageCredit: d.imageCredit || null, progress: d.progress || undefined,
-    highlights: d.highlights || [], done: false, doneAt: null, createdAt: Date.now() };
+    habit: d.habit || undefined, highlights: d.highlights || [], done: false, doneAt: null, createdAt: Date.now() };
 }
 
 document.addEventListener('click', e => {
@@ -3360,7 +3429,8 @@ function openForm(it) {
   renderHlList();
   setImage(it?.image || null);
   pendingCredit = it?.imageCredit || null;
-  setKind(it?.progress ? 'progress' : 'once');
+  setKind(it?.progress ? 'progress' : it?.habit ? 'habit' : 'once');
+  form.habitTimes.value = it?.habit?.times ?? 3; form.habitBy.value = it?.habit?.by ?? 6; form.habitRemind.checked = it?.habit ? it.habit.remind !== false : true;
   form.goalTarget.value = it?.progress?.target ?? '';
   if (!$('#unitSelect').options.length) $('#unitSelect').innerHTML = UNITS.map(x => `<option value="${x.u}">${x.u}</option>`).join('') + '<option value="other">Other…</option>';
   const u = it?.progress?.unit || 'kg', preset = UNITS.some(x => x.u === u);
@@ -3580,6 +3650,13 @@ form.addEventListener('submit', e => {
     if (!unit) { form.unitOther.focus(); return toast('Name your unit'); }
     fields.progress = { target, unit, log: prev?.progress?.log || [] };
   } else fields.progress = undefined;
+  // Weekly goal: N check-ins a week, a reminder on the chosen day if you're behind
+  if (form.dataset.kind === 'habit') {
+    const times = Math.round(+form.habitTimes.value);
+    if (!(times >= 1)) { form.habitTimes.focus(); return toast('At least once a week'); }
+    fields.habit = { times, by: +form.habitBy.value, remind: form.habitRemind.checked, log: prev?.habit?.log || [] };
+    if (fields.habit.remind) askForReminders(); // inside the tap, so the browser lets it ask for permission
+  } else fields.habit = undefined;
   const backup = JSON.stringify(items);
   const picks = pickedOf($('#formCountries'));
   if (editingId) { const it = items.find(i => i.id === editingId); Object.assign(it, fields); applyCountries(it, picks); }
@@ -3592,7 +3669,7 @@ form.addEventListener('submit', e => {
       it.done = true;
       it.doneAt = whenTime(date);
       it.memory = { date, with: '', highlight: '', story: '', photos: [] };
-    } else if (it.progress && focusItems().length < MAX_FOCUS) it.focus = { until: null, since: Date.now() }; // progress goals start in focus
+    } else if ((it.progress || it.habit) && focusItems().length < MAX_FOCUS) it.focus = { until: null, since: Date.now() }; // progress and weekly goals start in focus
     items.push(it);
   }
   try { save(); } catch { items = JSON.parse(backup); return uiNotice('Storage is full', 'Try a smaller photo.'); }
@@ -3613,6 +3690,8 @@ function setKind(k) {
   form.dataset.kind = k;
   $('#kindSeg').querySelectorAll('[data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === k));
   $('#progFields').hidden = k !== 'progress';
+  $('#habitFields').hidden = k !== 'habit';
+  if (k === 'habit' && !editingId && form.type.value === 'trip') form.type.value = 'activity';
 }
 $('#kindSeg').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) setKind(b.dataset.kind); });
 $('#unitSelect').addEventListener('change', () => { $('#unitOtherWrap').hidden = form.unit.value !== 'other'; if (form.unit.value === 'other') form.unitOther.focus(); });

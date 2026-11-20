@@ -1,0 +1,19 @@
+name: Weekly goal reminders
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: .github/reminders }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i --no-save --silent web-push@3
+      - run: node .github/reminders/send.mjs
+        env:
+          CRON_KEY: ${{ secrets.CRON_KEY }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}

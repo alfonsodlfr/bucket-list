@@ -316,3 +316,65 @@ create policy "anyone reads add counts" on public.idea_adds for select to anon, 
 drop policy if exists "count your add" on public.idea_adds;
 create policy "count your add" on public.idea_adds for insert to authenticated with check (user_id = auth.uid());
 grant select on public.ideas, public.idea_adds to anon;
+
+-- ---------------------------------------------------------------
+-- v4: Reminders for weekly goals. The app keeps one row per weekly goal
+-- with the next moment to check (e.g. Saturday 10:00) and this week's
+-- count. A scheduled GitHub Action calls take_due_reminders() with a
+-- secret key, sends a Web Push to your devices, and rolls the row on a week.
+-- ---------------------------------------------------------------
+create table if not exists public.push_subs (
+  endpoint text primary key,
+  user_id uuid not null default auth.uid(),
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.reminders (
+  user_id uuid not null default auth.uid(),
+  entry_id text not null,
+  title text not null check (char_length(title) <= 120),
+  times int not null check (times between 1 and 21),
+  count int not null default 0,
+  week_of date not null,
+  remind_at timestamptz not null,
+  primary key (user_id, entry_id)
+);
+alter table public.push_subs enable row level security;
+alter table public.reminders enable row level security;
+drop policy if exists "own push subscriptions" on public.push_subs;
+create policy "own push subscriptions" on public.push_subs for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists "own reminders" on public.reminders;
+create policy "own reminders" on public.reminders for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create schema if not exists private;
+create table if not exists private.secrets (name text primary key, value text not null);
+revoke all on schema private from anon, authenticated;
+
+create or replace function public.take_due_reminders(key text)
+returns table (entry_id text, title text, times int, count int, endpoint text, p256dh text, auth text)
+language plpgsql security definer set search_path = public as $$
+begin
+  if key is null or key <> (select value from private.secrets where name = 'cron') then raise exception 'not allowed'; end if;
+  return query
+  with due as (
+    select r.* from reminders r where r.remind_at <= now()
+  ), rolled as (
+    update reminders r
+       set remind_at = r.remind_at + interval '7 days' * (floor(extract(epoch from now() - r.remind_at) / 604800) + 1),
+           week_of = r.week_of + 7 * (floor(extract(epoch from now() - r.remind_at) / 604800)::int + 1),
+           count = 0
+      from due where r.user_id = due.user_id and r.entry_id = due.entry_id
+  )
+  select due.entry_id, due.title, due.times, due.count, s.endpoint, s.p256dh, s.auth
+    from due join push_subs s on s.user_id = due.user_id
+   where due.count < due.times and due.remind_at > now() - interval '12 hours';
+end $$;
+create or replace function public.drop_push_sub(key text, gone text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if key is null or key <> (select value from private.secrets where name = 'cron') then raise exception 'not allowed'; end if;
+  delete from push_subs where endpoint = gone;
+end $$;
+revoke all on function public.take_due_reminders(text), public.drop_push_sub(text, text) from public;
+grant execute on function public.take_due_reminders(text), public.drop_push_sub(text, text) to anon, authenticated;

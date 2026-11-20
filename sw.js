@@ -4,11 +4,11 @@
    - Photos in img/, icons and Google Fonts: cache first; they never change.
    - Everything else (Wikipedia/Wikivoyage lookups): network only.
    Bump VERSION on every deploy: a changed sw.js is what tells installed apps to update. */
-const VERSION = 'v24';
+const VERSION = 'v25';
 const SHELL = `shell-${VERSION}`;
 const MEDIA = 'media-v1';
 const SHELL_FILES = [
-  './', './index.html', './map.js', './social.js', './wrapped.js', './goals.js', './countries.json', './sights.json',
+  './', './index.html', './map.js', './social.js', './wrapped.js', './goals.js', './countries.json', './sights.json', './globe.json',
   './lib/supabase.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png',
 ];
 
@@ -56,4 +56,21 @@ self.addEventListener('fetch', e => {
     return e.respondWith(networkFirst(req));
   }
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') return e.respondWith(cacheFirst(req, MEDIA));
+});
+
+// Reminders (weekly goals): sent by the scheduled job in .github/workflows/reminders.yml
+self.addEventListener('push', e => {
+  const d = (() => { try { return e.data.json(); } catch { return { body: e.data?.text() }; } })();
+  e.waitUntil(self.registration.showNotification(d.title || 'The List', {
+    body: d.body || '', tag: d.tag, icon: './icons/icon-192.png', badge: './icons/icon-192.png', data: { url: d.url || './' },
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL(e.notification.data?.url || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => {
+    const w = ws.find(c => c.url.startsWith(self.registration.scope));
+    if (w) return w.focus().then(c => c.navigate?.(url).catch(() => {}));
+    return self.clients.openWindow(url);
+  }));
 });

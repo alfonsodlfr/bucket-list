@@ -38,6 +38,29 @@ function fmtAmount(n, u) {
 const progLine = it => `${fmtNum(progValue(it), it.progress.unit)} of ${fmtAmount(it.progress.target, it.progress.unit)}`;
 const lastCheckin = it => (it.progress?.log || []).reduce((m, l) => Math.max(m, l.at), 0);
 
+/* ---------- Weekly goals ----------
+   it.habit = { times, by (weekday 0–6 to check on, 6 = Saturday), remind, log: [ms] }. Weeks start on Monday. */
+const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function weekStart(t = Date.now()) { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); }
+const habitCount = (it, ws = weekStart()) => (it.habit?.log || []).filter(t => t >= ws && t < ws + 7 * DAYMS).length;
+// The moment to check this week: the chosen weekday, 10:00
+function habitDeadline(it, ws = weekStart()) { const d = new Date(ws); d.setDate(d.getDate() + ((it.habit.by + 6) % 7)); d.setHours(10, 0, 0, 0); return d.getTime(); }
+const habitLeft = it => Math.max(0, it.habit.times - habitCount(it));
+function habitLine(it) {
+  const n = habitCount(it), t = it.habit.times, left = t - n;
+  if (left <= 0) return `${n} of ${t} this week · done ✓`;
+  const late = Date.now() >= habitDeadline(it) - 10 * 3600e3; // from the check day on
+  return `${n} of ${t} this week · ${left} to go${late ? ' · ' + (new Date().getDay() === 0 ? 'last day' : 'behind') : ''}`;
+}
+const dotsHtml = it => `<span class="hb-dots">${Array.from({ length: Math.min(it.habit.times, 14) }, (_, k) => `<i class="${k < habitCount(it) ? 'on' : ''}"></i>`).join('')}</span>`;
+function logHabit(it) {
+  it.habit.log = [...(it.habit.log || []), Date.now()];
+  save(); refresh();
+  const left = habitLeft(it);
+  toast(left ? `Checked in · ${left} more this week` : `That's ${it.habit.times} this week ✓`);
+  syncRemindersSoon();
+}
+
 /* ---------- Focus goals ---------- */
 const focusItems = () => items.filter(i => i.focus && !i.done).sort((a, b) => (a.focus.until || '9999').localeCompare(b.focus.until || '9999'));
 const daysTo = until => Math.ceil((new Date(until + 'T23:59:59') - Date.now()) / DAYMS);
@@ -50,7 +73,8 @@ function seasonEnd() { // last day of the current (northern) season
 }
 function ringHtml(it, size = 46) {
   let p, big, small;
-  if (it.progress) { p = progPct(it); big = Math.round(p * 100); small = '%'; }
+  if (it.habit) { p = Math.min(1, habitCount(it) / it.habit.times); big = `${habitCount(it)}/${it.habit.times}`; small = 'week'; }
+  else if (it.progress) { p = progPct(it); big = Math.round(p * 100); small = '%'; }
   else if (it.focus?.until) {
     const left = Math.max(0, daysTo(it.focus.until)), span = Math.max(1, (new Date(it.focus.until) - (it.focus.since || it.createdAt)) / DAYMS);
     p = Math.min(1, Math.max(.04, 1 - left / span)); big = left; small = left === 1 ? 'day' : 'days';
@@ -59,9 +83,10 @@ function ringHtml(it, size = 46) {
 }
 function focusSub(it) {
   const parts = [];
+  if (it.habit) parts.push(habitLine(it));
   if (it.progress) parts.push(progLine(it));
   if (it.focus?.until) { const d = daysTo(it.focus.until); parts.push(d < 0 ? `was due ${shortDate(it.focus.until)}` : d === 0 ? 'due today' : `by ${shortDate(it.focus.until)}`); }
-  else if (!it.progress) parts.push('No date yet');
+  else if (!it.progress && !it.habit) parts.push('No date yet');
   return parts.join(' · ');
 }
 
@@ -82,7 +107,7 @@ function renderFocusArea() {
       return `<div class="focus-row" data-g="open" data-id="${it.id}" role="button" tabindex="0">
         <i class="focus-img" style="${cover ? `background-image:${cssUrl(cover)}` : `background:${toneBg(TYPES[it.type] || TYPES.other)}`}"></i>
         <span class="focus-t"><b>${esc(it.title)}</b><small>${esc(focusSub(it))}</small></span>
-        ${it.progress ? `<button class="focus-plus" data-g="checkin" data-id="${it.id}" aria-label="Check in">+</button>` : ''}
+        ${it.progress || it.habit ? `<button class="focus-plus" data-g="checkin" data-id="${it.id}" aria-label="Check in">+</button>` : ''}
         ${ringHtml(it)}
       </div>`;
     }).join('')}</div>` : ''}`;
@@ -124,7 +149,7 @@ focusDlg.addEventListener('click', e => {
   if (a === 'remove') { delete it.focus; save(); focusDlg.close(); refresh(); return toast('Removed from focus'); }
   if (a === 'save') {
     const until = $('#focusDate').value || null;
-    if (!until && !it.progress) return toast('Pick a date for it');
+    if (!until && !it.progress && !it.habit) return toast('Pick a date for it');
     it.focus = { until, since: it.focus?.since || Date.now() };
     save(); focusDlg.close(); refresh();
     toast(until ? `Focus · ${daysTo(until)} days to go` : 'Added to your focus');
@@ -135,6 +160,7 @@ focusDlg.addEventListener('click', e => {
 const checkinDlg = $('#checkinDlg');
 let ck = null; // { it, amount }
 function openCheckin(it) {
+  if (it.habit) return logHabit(it); // weekly goals: one tap is one check-in
   const x = unitInfo(it.progress.unit);
   ck = { it, amount: x.step };
   renderCheckin();
@@ -269,6 +295,21 @@ function seasonHtml(it) {
 /* ---------- Entry page block ---------- */
 function goalBlock(it) {
   let html = '';
+  if (it.habit) {
+    const h = it.habit, n = habitCount(it), ws = weekStart();
+    const weeks = Array.from({ length: 8 }, (_, k) => ws - (7 - k) * 7 * DAYMS);
+    const hit = weeks.slice(0, 7).filter(w => habitCount(it, w) >= h.times).length;
+    const last = [...(h.log || [])].reverse();
+    html += `<div class="prog hb-week">
+      <div class="hb-top"><b>${n} of ${h.times}</b><span>this week</span>${dotsHtml(it)}</div>
+      <p class="hint-line" style="margin:0">${esc(habitLine(it).split(' · ').slice(1).join(' · '))}</p>
+      ${!it.done ? `<button class="btn solid" data-g="checkin" data-id="${it.id}">I did it today</button>` : ''}
+      <div class="hb-hist">${weeks.map((w, k) => `<i class="${habitCount(it, w) >= h.times ? 'hit' : ''} ${k === 7 ? 'now' : ''}" title="${habitCount(it, w)} of ${h.times}"></i>`).join('')}</div>
+      <div class="hb-hist-lbl"><span>8 weeks ago</span><span>${hit} of the last 7 weeks</span><span>Now</span></div>
+      ${last.length ? `<div class="prog-log">${last.slice(0, 3).map((t, k) => `<div><span>${ago(t)}</span><b>Checked in</b>${k === 0 && !it.done ? `<button class="link-quiet" data-g="undo" data-id="${it.id}">Undo</button>` : ''}</div>`).join('')}</div>` : ''}
+      ${!it.done ? `<div class="hb-remind"><span>${h.remind !== false ? `Reminder on ${DOW[h.by]}s if you're behind` : 'No reminder'}</span>${h.remind !== false && !(window.Notification && Notification.permission === 'granted') ? `<button class="link-quiet" data-g="remind-allow" data-id="${it.id}">Allow notifications</button>` : `<button class="link-quiet" data-g="remind" data-id="${it.id}">${h.remind !== false ? 'Turn off' : 'Turn on'}</button>`}</div>` : ''}
+    </div>`;
+  }
   if (it.progress) {
     const v = progValue(it), p = it.progress, log = [...(p.log || [])].reverse();
     // weekly totals for the last 8 weeks
@@ -295,6 +336,7 @@ function cardBadge(i) {
   return typeof sameGoalPill === 'function' ? sameGoalPill(i) : '';
 }
 function cardProgress(i) {
+  if (i.habit && !i.done) return `<div class="card-prog">${dotsHtml(i)}<small>${esc(habitLine(i))}</small></div>`;
   if (!i.progress || i.done) return '';
   return `<div class="card-prog"><div class="bar-thin"><i style="width:${progPct(i) * 100}%"></i></div><small>${esc(progLine(i))}</small></div>`;
 }
@@ -575,7 +617,14 @@ document.addEventListener('click', e => {
   if (a === 'checkin' && it) { e.stopPropagation(); return openCheckin(it); }
   if (a === 'open' && it) return openEntry(it);
   if (a === 'focus' && it) return openFocus(it);
-  if (a === 'undo' && it) { it.progress.log.pop(); save(); refresh(); return toast('Last check-in removed'); }
+  if (a === 'undo' && it) { (it.habit || it.progress).log.pop(); save(); refresh(); syncRemindersSoon(); return toast('Last check-in removed'); }
+  if (a === 'remind-allow') return askForReminders();
+  if (a === 'remind' && it?.habit) {
+    it.habit.remind = it.habit.remind === false;
+    if (it.habit.remind) askForReminders();
+    save(); refresh(); syncRemindersSoon();
+    return toast(it.habit.remind ? `Reminder on ${DOW[it.habit.by]}s` : 'Reminder off');
+  }
   if (a === 'ritual') return openRitual();
   if (a === 'passport') { $('#stampDlg').close(); return openPassport(); }
   if (a === 'close-stamp') return $('#stampDlg').close();

@@ -418,7 +418,7 @@ async function syncWishes() {
 }
 // Every save of the list mirrors the titles (debounced)
 const _saveList = save;
-save = function () { _saveList(); syncWishesSoon(); };
+save = function () { _saveList(); syncWishesSoon(); if (items.some(i => i.habit)) syncRemindersSoon(); };
 async function setShareList(on) {
   if (!ME) return;
   must(await sb.from('profiles').update({ share_list: on }).eq('id', ME));
@@ -997,6 +997,63 @@ async function countIdeaAdd(ideaId) {
   const { data: { session } } = await sb.auth.getSession();
   if (session) await sb.from('idea_adds').insert({ idea_id: ideaId, user_id: session.user.id });
 }
+
+/* ---------- Reminders for weekly goals ----------
+   Push needs a subscription (Home Screen app on iPhone) and a signed-in session; no name is needed.
+   One row per weekly goal tells the sender when to check next and what this week's count is. */
+const VAPID_PUBLIC = 'BKLKFz3AAHsj4HF6aDzg8VIbcR61rNsKv1eUMeiKinDadDXW4-65K7v6VRDhgorxJGcqWfhZe5m2effdu8-YPw0';
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const b64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+async function ensureSession() {
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session) session = must(await sb.auth.signInAnonymously()).session;
+  return session;
+}
+// Call straight from a tap: browsers only show the permission prompt in response to one
+function askForReminders() {
+  if (!sb || !document.body.classList.contains('remind-on')) return;
+  if (!pushSupported()) {
+    const ios = /iPhone|iPad/.test(navigator.userAgent);
+    return toast(ios ? 'For reminders, add The List to your Home Screen (Share → Add to Home Screen), then open it from there' : 'This browser can\'t show reminders');
+  }
+  if (Notification.permission === 'denied') return toast('Notifications are off for The List. Turn them on in Settings.');
+  const ask = Notification.permission === 'granted' ? Promise.resolve('granted') : Notification.requestPermission();
+  ask.then(r => r === 'granted' ? subscribePush().then(syncReminders) : toast('Without notifications, reminders show in the app only'))
+    .catch(e => { console.warn('reminders', e); toast('Couldn\'t turn on reminders. Try again online.'); });
+}
+async function subscribePush() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
+  const session = await ensureSession(), j = sub.toJSON();
+  must(await sb.from('push_subs').upsert({ endpoint: j.endpoint, user_id: session.user.id, p256dh: j.keys.p256dh, auth: j.keys.auth }, { onConflict: 'endpoint' }));
+}
+let remindTimer = null;
+const syncRemindersSoon = () => { clearTimeout(remindTimer); remindTimer = setTimeout(syncReminders, 1200); };
+async function syncReminders() {
+  if (!sb || !pushSupported() || Notification.permission !== 'granted' || typeof weekStart !== 'function') return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const uid = session.user.id, now = Date.now();
+  const want = items.filter(i => i.habit && !i.done && i.habit.remind !== false).map(i => {
+    let ws = weekStart(), at = habitDeadline(i, ws), count = habitCount(i, ws);
+    // Done for this week, or this week's check has passed: the next one is next week's
+    if (count >= i.habit.times || at <= now) { ws += 7 * DAYMS; at = habitDeadline(i, ws); count = 0; }
+    return { user_id: uid, entry_id: i.id, title: i.title.slice(0, 120), times: i.habit.times, count, week_of: isoDay(ws), remind_at: new Date(at).toISOString() };
+  });
+  try {
+    const have = must(await sb.from('reminders').select('entry_id')) || [];
+    const gone = have.map(r => r.entry_id).filter(id => !want.some(w => w.entry_id === id));
+    if (gone.length) must(await sb.from('reminders').delete().eq('user_id', uid).in('entry_id', gone));
+    if (want.length) must(await sb.from('reminders').upsert(want, { onConflict: 'user_id,entry_id' }));
+  } catch (e) { console.warn('reminders sync failed', e); }
+}
+// Reminders switch on by themselves once the reminders table exists (body.remind-on shows their controls)
+(async () => {
+  if (!sb) return;
+  const { error } = await sb.from('reminders').select('entry_id').limit(1);
+  document.body.classList.toggle('remind-on', !error);
+  if (!error && pushSupported() && Notification.permission === 'granted') setTimeout(syncReminders, 2000);
+})();
 
 // Called by the main app
 function onEntryCompleted(it) { api.publishEntry(it); }
