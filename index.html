@@ -320,7 +320,7 @@ body.globe-open .map-frame{display:block;position:fixed;inset:0;z-index:58;margi
 body.globe-open #worldSvg{height:100dvh;touch-action:none}
 body.globe-open .map-zoom{bottom:calc(24px + env(safe-area-inset-bottom))}
 body.globe-open .map-legend{bottom:calc(24px + env(safe-area-inset-bottom))}
-.map-x{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:12px;z-index:3;width:38px;height:38px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(24,22,19,.72);border:1px solid rgba(237,228,214,.24);color:var(--text);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.map-x{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:12px;z-index:5;width:38px;height:38px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(24,22,19,.72);border:1px solid rgba(237,228,214,.24);color:var(--text);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .map-x svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;display:block}
 .map-title-ov{position:absolute;top:calc(env(safe-area-inset-top) + 18px);left:20px;right:70px;z-index:2;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);pointer-events:none}
 .map-title-ov b{color:var(--gold);font-weight:400}
@@ -1023,6 +1023,13 @@ body.remind-on .hb-remind{display:flex!important}
 .card-prog .hb-dots i{width:9px;height:9px}
 .daily-card{position:relative;display:grid;gap:8px;justify-items:start;margin:0 0 28px;padding:20px 20px 18px;border:1px solid rgba(200,169,106,.35);border-radius:14px;background:radial-gradient(120% 140% at 100% 0%,rgba(200,169,106,.12),transparent 60%),var(--surface)}
 .daily-card.done{border-color:var(--line)}
+.daily-card.sealed{cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
+.dc-seal{display:flex;align-items:center;gap:14px;width:100%}
+.dc-seal .dc-q{width:46px;height:46px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:20px;color:var(--gold);border:1px dashed rgba(200,169,106,.7);animation:breathe 2.4s ease-in-out infinite}
+.dc-seal b{display:block;font-size:20px;font-weight:300}
+.dc-seal small{color:var(--muted);font-size:13px}
+.daily-card.reveal h3,.daily-card.reveal p,.daily-card.reveal .btn{animation:in .6s var(--ease) both}
+.daily-card.reveal p{animation-delay:.12s}.daily-card.reveal .btn{animation-delay:.22s}
 .dc-top{display:flex;justify-content:space-between;width:100%;gap:12px}
 .dc-count{font-size:11px;color:var(--muted)}
 .daily-card h3{font-size:24px;font-weight:300;letter-spacing:-.01em;line-height:1.2}
@@ -1169,7 +1176,7 @@ body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:
   .rail-arrow{display:none}
   .rail-track{grid-auto-columns:44vw;gap:10px;margin:0 -20px;padding:0 20px 4px;scroll-padding:0 20px;max-width:none;width:calc(100% + 40px)}
   #listView{overflow-x:clip}
-  .settings-btn{top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px}
+  .settings-btn{top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px;z-index:42}
   .rtiles{margin:0 -20px;padding:0 20px 6px;scroll-padding:0 20px}
   .daily-card{margin-bottom:22px}
 
@@ -1218,9 +1225,10 @@ body:not([data-view="list"]) .settings-btn,body.in-detail .settings-btn{display:
 
   /* ---- Bottom sheets ---- */
   html.scroll-lock,html.scroll-lock body{overflow:hidden;overscroll-behavior:none}
-  .xbtn{display:grid;place-items:center;position:fixed;top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px;padding:0;border-radius:50%;background:rgba(24,22,19,.72);border:1px solid rgba(237,228,214,.24);color:var(--text);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:61;animation:xIn .25s .42s both}
-  .sheet .xbtn{opacity:0;pointer-events:none;transition:opacity .25s;animation:none}
-  .sheet.open .xbtn{opacity:1;pointer-events:auto;animation:none}
+  .xbtn{display:grid;place-items:center;position:fixed;top:calc(env(safe-area-inset-top) + 10px);right:12px;width:38px;height:38px;padding:0;border-radius:50%;background:rgba(24,22,19,.72);border:1px solid rgba(237,228,214,.24);color:var(--text);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:70;opacity:0;visibility:hidden;transition:opacity .2s}
+  dialog.settled .xbtn{opacity:1;visibility:visible}
+  .sheet .xbtn{pointer-events:none}
+  .sheet.open .xbtn{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s .3s}
   .dragging .xbtn{visibility:hidden}
   .grab{display:flex;justify-content:center;align-items:flex-start;padding-top:10px;height:28px;touch-action:none;cursor:grab;z-index:5}
   .grab::after{content:"";width:40px;height:5px;border-radius:5px;background:rgba(237,228,214,.5);box-shadow:0 1px 6px rgba(0,0,0,.4)}
@@ -2281,7 +2289,7 @@ function dragToDismiss(panel, handleSel, dismiss, scroller = panel) {
     panel.closest('.sheet, dialog')?.classList.remove('dragging');
     const fast = dy / Math.max(1, performance.now() - t0) > .6; // a flick also dismisses
     panel.style.transition = '';
-    if (dy > 6) { blockClick = true; setTimeout(() => { blockClick = false; }, 350); } // the lift at the end of a drag isn't a tap; a later tap is
+    if (dy > 12) { blockClick = true; setTimeout(() => { blockClick = false; }, 350); } // the lift at the end of a drag isn't a tap; a later tap is
     if (dy > 110 || (fast && dy > 30)) {
       panel.style.transform = 'translateY(110%)';
       setTimeout(() => { dismiss(); panel.style.transform = ''; }, 220);
@@ -2301,7 +2309,7 @@ function dragToDismiss(panel, handleSel, dismiss, scroller = panel) {
     if (!active) {
       if (Math.abs(ddx) > 10 && Math.abs(ddx) > Math.abs(ddy)) { y0 = null; return; } // sideways: not ours
       if (ddy < -6) { y0 = null; return; } // upwards: let the sheet scroll
-      if (ddy < 6) return;
+      if (ddy < (fromHandle ? 6 : 14)) return; // sheet content needs a clear pull, so a wobbly tap stays a tap
       if (!fromHandle && scroller.scrollTop > 0) { y0 = null; return; } // content first scrolls back to the top
       begin(); y0 = t.clientY - ddy; t0 = performance.now();
     }
@@ -2373,6 +2381,10 @@ document.querySelectorAll('dialog').forEach(d => {
   const g = document.createElement('div');
   g.className = 'grab'; g.setAttribute('aria-hidden', 'true');
   d.prepend(g);
+  // The X appears once the slide-in has finished (during it, the moving sheet would carry the X along)
+  const settle = () => d.classList.add('settled');
+  d.addEventListener('animationend', e => { if (e.target === d) settle(); });
+  new MutationObserver(() => { if (d.open) { d.classList.remove('settled'); setTimeout(settle, 650); } else d.classList.remove('settled'); }).observe(d, { attributes: true, attributeFilter: ['open'] });
   d.insertAdjacentHTML('beforeend', '<button type="button" class="xbtn" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>');
   d.lastElementChild.onclick = () => d.close();
   dragToDismiss(d, '.grab, h2', () => d.close());

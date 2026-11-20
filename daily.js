@@ -154,12 +154,30 @@ function renderDaily() {
   const [title, cat, hint] = dailyToday(), done = dailyDone(), isDone = !!done[todayKey()], n = Object.keys(done).length;
   el.hidden = false;
   el.classList.toggle('done', isDone);
+  // Each day starts sealed: tap the card to reveal today's challenge
+  const sealed = localStorage.getItem('bucketlist.dailySeen') !== todayKey() && !isDone;
+  el.classList.toggle('sealed', sealed);
+  el.setAttribute('role', sealed ? 'button' : 'region');
+  el.tabIndex = sealed ? 0 : -1;
+  if (sealed) {
+    el.innerHTML = `<div class="dc-top"><span class="eyebrow gold-eye">Challenge of the day</span>${n ? `<span class="dc-count">${n} done</span>` : ''}</div>
+      <div class="dc-seal"><span class="dc-q">?</span><span><b>Today’s challenge is ready</b><small>Tap to reveal it</small></span></div>`;
+    return;
+  }
   el.innerHTML = `
     <div class="dc-top"><span class="eyebrow gold-eye">Challenge of the day · ${esc(cat)}</span>${n ? `<span class="dc-count">${n} done</span>` : ''}</div>
     <h3>${esc(title)}</h3>
     <p>${isDone ? 'Done. A new one tomorrow.' : esc(hint)}</p>
     <button class="btn ${isDone ? '' : 'solid'} small" data-daily="${isDone ? 'undo' : 'done'}">${isDone ? '✓ Done today' : 'I did it'}</button>`;
 }
+function revealDaily() {
+  localStorage.setItem('bucketlist.dailySeen', todayKey());
+  const el = $('#dailyCard');
+  renderDaily();
+  el.classList.add('reveal'); setTimeout(() => el.classList.remove('reveal'), 900);
+}
+document.addEventListener('click', e => { if (e.target.closest('#dailyCard.sealed')) revealDaily(); });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('#dailyCard.sealed')) { e.preventDefault(); revealDaily(); } });
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-daily]')?.dataset.daily;
   if (!a) return;

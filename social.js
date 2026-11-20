@@ -651,9 +651,11 @@ function renderFriendsShell() {
   const me = ME && api.profile(ME);
   $('#friendRoster').innerHTML = (me ? `<button class="roster-p" data-g="passport">${avatar(ME, 34)}<small>You</small></button>` : '') +
     api.friends().map(f => `<span class="roster-p">${avatar(f.id, 34)}<small>${esc(f.name.split(' ')[0])}</small></span>`).join('');
+  // On Challenges, the empty state already has these buttons: only show them once there's a list
+  const hasChallenges = ME && S.challenges.some(c => api.membersOf(c.id).includes(ME));
   $('#friendsActions').innerHTML = friendsTab === 'feed'
     ? `<button class="btn solid" data-add-friends>Add friends</button>`
-    : `<button class="link-quiet" data-join-link>Join with a link</button><button class="btn solid" data-new-ch>New challenge</button>`;
+    : hasChallenges ? `<button class="link-quiet" data-join-link>Join with a link</button><button class="btn solid" data-new-ch>New challenge</button>` : '';
   $('#requests').innerHTML = ME ? requestsHtml() : '';
   if (!ME) { $('#feed').innerHTML = welcomeCard('feed'); $('#challengeList').innerHTML = welcomeCard('challenges'); return; }
   if (friendsTab === 'feed') renderFeed(); else renderChallenges();
