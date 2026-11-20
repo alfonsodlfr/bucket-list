@@ -335,33 +335,37 @@ function initMapInteractions() {
     if (!e.ctrlKey && !e.metaKey) return; // normal scrolling keeps scrolling the page; pinch / ⌘-scroll zooms
     e.preventDefault(); zoomAt(Math.exp(e.deltaY * 0.01));
   }, { passive: false });
+  /* One gesture for any number of fingers: the midpoint of the fingers turns the globe, their spread zooms it,
+     both at once. Whenever a finger lands or lifts, the gesture re-anchors, so nothing jumps. */
   const pts = new Map();
-  let pinch = null;
+  let g = null; // { cx, cy, spread } at the last move
+  const centre = () => { const v = [...pts.values()], n = v.length; const cx = v.reduce((s, p) => s + p.x, 0) / n, cy = v.reduce((s, p) => s + p.y, 0) / n; return { cx, cy, spread: n > 1 ? Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y) : 0 }; };
+  const anchor = () => { g = pts.size ? centre() : null; };
   svg.addEventListener('pointerdown', e => {
     G.spin = false;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false };
-    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); drag && (drag.moved = true); }
+    if (pts.size === 1) drag = { moved: false, x0: e.clientX, y0: e.clientY };
+    else if (drag) drag.moved = true; // two fingers is never a tap
+    anchor();
   });
   window.addEventListener('pointermove', e => {
-    if (!pts.has(e.pointerId)) return;
+    if (!pts.has(e.pointerId) || !g) return;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2 && pinch) {
-      const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-      zoomAt(pinch / d); pinch = d; return;
-    }
-    if (drag) {
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
-      if (drag.moved) {
-        const deg = 1 / (G.R * G.k * pxPerUnit()) / RAD;
-        G.lon -= dx * deg; G.lat = Math.max(-80, Math.min(80, G.lat + dy * deg));
-        drawGlobe();
-      }
-      drag.x = e.clientX; drag.y = e.clientY;
-    }
+    const now = centre();
+    if (drag && !drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4) drag.moved = true;
+    if (!drag?.moved) return;
+    if (pts.size > 1 && g.spread > 0 && now.spread > 0) G.k = Math.min(8, Math.max(1, G.k * now.spread / g.spread));
+    const deg = 1 / (G.R * G.k * pxPerUnit()) / RAD;
+    G.lon -= (now.cx - g.cx) * deg;
+    G.lat = Math.max(-80, Math.min(80, G.lat + (now.cy - g.cy) * deg));
+    g = now;
+    drawGlobe();
   });
-  const end = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) setTimeout(() => { drag = null; }, 0); };
+  const end = e => {
+    if (!pts.delete(e.pointerId)) return;
+    anchor(); // the fingers left behind become the new starting point
+    if (!pts.size) setTimeout(() => { drag = null; }, 0);
+  };
   window.addEventListener('pointerup', end);
   window.addEventListener('pointercancel', end);
   svg.addEventListener('click', e => {
